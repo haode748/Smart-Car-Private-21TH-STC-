@@ -1,0 +1,44 @@
+C251 COMPILER V5.60.0,  wu_motor                                                           10/11/26  15:54:03  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE wu_motor
+OBJECT MODULE PLACED IN .\out_file\wu_motor.obj
+COMPILER INVOKED BY: D:\ruanjian\51\C251\BIN\C251.EXE wu_motor.c LARGE FLOAT64 ROM(HUGE) WARNINGLEVEL(3) OPTIMIZE(SIZE) 
+                    -BROWSE INCDIR(..\..\libraries\zf_common;..\..\libraries\zf_components;..\..\libraries\zf_device;..\..\libraries\zf_drive
+                    -r;..\user;..\code;..\..\libraries\zf_components\stc32g_usb_lib;..\..\libraries\zf_components\seekfree_assistant) DEBUG P
+                    -RINT(.\out_file\wu_motor.lst) TABS(2) OBJECT(.\out_file\wu_motor.obj) 
+
+stmt  level    source
+
+    1          #include <zf_common_headfile.h>
+    2          
+    3          
+    4          void Wu_motor_Init(void)
+    5          {
+    6   1          pwm_set_duty(PWMF_CH1_PA1,500);
+    7   1          pwm_set_duty(PWMF_CH2_PA3,500);
+    8   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =    ------     ------
+  ecode size           =        24     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =    ------     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =    ------     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

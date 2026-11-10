@@ -1,0 +1,264 @@
+C251 COMPILER V5.60.0,  pid                                                                10/11/26  16:54:46  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE pid
+OBJECT MODULE PLACED IN .\out_file\pid.obj
+COMPILER INVOKED BY: D:\ruanjian\51\C251\BIN\C251.EXE ..\code\pid.c LARGE FLOAT64 ROM(HUGE) WARNINGLEVEL(3) OPTIMIZE(SIZ
+                    -E) BROWSE INCDIR(..\..\libraries\zf_common;..\..\libraries\zf_components;..\..\libraries\zf_device;..\..\libraries\zf_dr
+                    -iver;..\user;..\code;..\..\libraries\zf_components\stc32g_usb_lib;..\..\libraries\zf_components\seekfree_assistant) DEBU
+                    -G PRINT(.\out_file\pid.lst) TABS(2) OBJECT(.\out_file\pid.obj) 
+
+stmt  level    source
+
+    1          #include "pid.h"
+    2          float p_=0;
+    3          float d_=0;
+    4          //直道标志位
+    5          uint8 flage=0;
+    6          RS_Incremental_PID Pid_vl;
+    7          RS_Incremental_PID Pid_vr;
+    8          RS_Incremental_PID Pid_turn;
+    9          RS_Incremental_PID Pid_wheel_turn;
+   10          //直道
+   11          RS_Incremental_PID Pidzd_vl;
+   12          RS_Incremental_PID Pidzd_vr;
+   13          RS_Incremental_PID Pidzd_turn;
+   14          float kp2= 0.0002;
+   15          float kd2= 0.01;
+   16          
+   17          //方向环
+   18          int32 car_dir,vl_ex,vr_ex , car_wheel_dir, pwm_r;
+   19          void PID_Start_init(void)
+   20          {
+   21   1      //左轮速度
+   22   1      Pid_vl.Kp = 2.7;
+   23   1      Pid_vl.Ki =3.0;
+   24   1      Pid_vl.Kd = 0.0;
+   25   1      Pid_vl.Target = 70;
+   26   1          
+   27   1      ////直道左轮速度
+   28   1      //Pidzd_vl.Kp = 1.0;
+   29   1      //Pidzd_vl.Ki =0.25;
+   30   1      //Pidzd_vl.Kd = 0.0;
+   31   1      //Pidzd_vl.Target = 90;
+   32   1      //右轮速度
+   33   1      Pid_vr.Kp = 2.7;
+   34   1      Pid_vr.Ki = 3.0;
+   35   1      Pid_vr.Kd = 0;
+   36   1      Pid_vr.Target = 70;
+   37   1      
+   38   1      //    //直道右轮速度
+   39   1      //    Pidzd_vr.Kp = 1.0;
+   40   1      //Pidzd_vr.Ki = 0.35;
+   41   1      //Pidzd_vr.Kd = 0.032;
+   42   1      //Pidzd_vr.Target = 90;
+   43   1      
+   44   1      //转向环(舵机)
+   45   1      Pid_turn.Kp = -0.38;
+   46   1      Pid_turn.Kd = -1.5;
+   47   1      Pid_turn.Target = 0;
+   48   1      
+   49   1      
+   50   1      
+   51   1      //后轮差速
+   52   1      Pid_wheel_turn.Kp = 1.3 ;
+   53   1      Pid_wheel_turn.Kd = 0.3;
+   54   1      Pid_wheel_turn.Target = 0;
+   55   1      
+   56   1      }
+C251 COMPILER V5.60.0,  pid                                                                10/11/26  16:54:46  PAGE 2   
+
+   57          
+   58          //#include "pid.h"
+   59          //float p_=0;
+   60          //float d_=0;
+   61          ////直道标志位
+   62          //uint8 flage=0;
+   63          //RS_Incremental_PID Pid_vl;
+   64          //RS_Incremental_PID Pid_vr;
+   65          //RS_Incremental_PID Pid_turn;
+   66          //RS_Incremental_PID Pid_wheel_turn;
+   67          ////直道
+   68          //RS_Incremental_PID Pidzd_vl;
+   69          //RS_Incremental_PID Pidzd_vr;
+   70          //RS_Incremental_PID Pidzd_turn;
+   71          //float kp2= 0.00018;
+   72          //float kd2=0.013;
+   73          ////float kd2=0.0;
+   74          ////方向环
+   75          //int32 car_dir,vl_ex,vr_ex , car_wheel_dir, pwm_r;
+   76          //void PID_Start_init(void)
+   77          //{
+   78          ////左轮速度
+   79          //Pid_vl.Kp = 5;
+   80          //Pid_vl.Ki =1.6;
+   81          //Pid_vl.Kd = 0.0;
+   82          //Pid_vl.Target = 155;
+   83          //    
+   84          //////直道左轮速度
+   85          ////Pidzd_vl.Kp = 1.0;
+   86          ////Pidzd_vl.Ki =0.25;
+   87          ////Pidzd_vl.Kd = 0.0;
+   88          ////Pidzd_vl.Target = 90;
+   89          ////右轮速度
+   90          //Pid_vr.Kp = 5;
+   91          //Pid_vr.Ki = 1.6;
+   92          //Pid_vr.Kd = 0.0;
+   93          //Pid_vr.Target = 155;
+   94          
+   95          ////    //直道右轮速度
+   96          ////    Pidzd_vr.Kp = 1.0;
+   97          ////Pidzd_vr.Ki = 0.35;
+   98          ////Pidzd_vr.Kd = 0.032;
+   99          ////Pidzd_vr.Target = 90;
+  100          
+  101          ////转向环
+  102          //Pid_turn.Kp = -0.33;
+  103          //Pid_turn.Kd = -3;
+  104          //Pid_turn.Target = 0;
+  105          
+  106          
+  107          
+  108          ////后轮差速
+  109          //Pid_wheel_turn.Kp = 1.7;
+  110          //Pid_wheel_turn.Kd = 0.2;
+  111          //Pid_wheel_turn.Target = 0;
+  112          
+  113          //}
+  114          //增量式PID
+  115          int32 IncrementalPID_Calculate(RS_Incremental_PID *pid , int32 wheel_ex )
+  116          { 
+  117   1        pid->Err = wheel_ex - (int32)pid->Measure;          // 误差 = 目标 - 实际
+  118   1        
+  119   1        //增量
+  120   1        
+  121   1        pid->p_out = pid->Kp * (pid->Err - pid->Last_Err);
+  122   1        pid->i_out = pid->Ki * pid->Err;
+C251 COMPILER V5.60.0,  pid                                                                10/11/26  16:54:46  PAGE 3   
+
+  123   1        pid->d_out = pid->Kd * (pid->Err - 2*pid->Last_Err + pid->Previous_Err);
+  124   1        
+  125   1        pid->Output += pid->p_out + pid->i_out + pid->d_out;    // ★ 累加
+  126   1        
+  127   1        pid->Previous_Err = pid->Last_Err;
+  128   1        pid->Last_Err =  pid->Err;
+  129   1        
+  130   1        pid->Output = Clip(pid->Output,-7000 , 7000); // 限幅保护编码器和电机，同时避免超调
+  131   1        return pid->Output;
+  132   1      }
+  133          
+  134          
+  135          
+  136          ////增量式PID
+  137          //int32 IncrementalPID_Calculate(RS_Incremental_PID *pid , int32 wheel_ex )
+  138          //{ 
+  139          //    
+  140          //  // 积分分离阈值
+  141          //pid->Err = wheel_ex - pid->Measure;
+  142          
+  143          //// 积分分离：误差大时不用积分
+  144          //if (abs(pid->Err) > INTEGRAL_SEP_THRESHOLD) {
+  145          //    pid->i_out = 0;
+  146          //} else {
+  147          //    pid->i_out = pid->Ki * pid->Err;
+  148          //    // 可选：对 i_out 单独限幅，比如 ±200
+  149          //    pid->i_out = Clip(pid->i_out, -200, 200);
+  150          //}
+  151          
+  152          //pid->p_out = pid->Kp * (pid->Err - pid->Last_Err);
+  153          //pid->d_out = pid->Kd * (pid->Err - 2*pid->Last_Err + pid->Previous_Err);
+  154          
+  155          //pid->Output += pid->p_out + pid->i_out + pid->d_out;
+  156          //pid->Output = Clip(pid->Output, -7000, 7000);
+  157          //  return pid->Output;
+  158          //}
+  159          
+  160          
+  161          
+  162          //位置式PD
+  163          int32 Postion_PID_Cal(RS_Incremental_PID *pid , int32 error)
+  164          {
+  165   1        pid->Err = error;
+  166   1        
+  167   1        pid->p_out = pid->Kp * pid->Err;
+  168   1        pid->d_out = pid->Kd * (pid->Err - pid->Last_Err) ;
+  169   1        
+  170   1        pid->Output = pid->p_out + pid->d_out; 
+  171   1        
+  172   1        pid->Last_Err =  pid->Err;
+  173   1        
+  174   1        pid->Output = Clip(pid->Output,-1000 , 1000); // 限幅
+  175   1      //  pid->Output=-pid->Output;
+  176   1        return pid->Output;
+  177   1      }
+  178          
+  179          //位置式PD(加陀螺仪)
+  180          int32 Postion_PI2D_Cal(RS_Incremental_PID *pid , int32 error ,float groyz ,float kd2)
+  181          {
+  182   1        pid->Err = error;
+  183   1        pid->p_out = pid->Kp * pid->Err;
+  184   1        pid->d_out = pid->Kd * (pid->Err - pid->Last_Err) + groyz*kd2;
+  185   1      
+  186   1        pid->Output = pid->p_out + pid->d_out;
+  187   1        
+  188   1        pid->Last_Err =  pid->Err;
+C251 COMPILER V5.60.0,  pid                                                                10/11/26  16:54:46  PAGE 4   
+
+  189   1        
+  190   1        pid->Output = Clip(pid->Output,-7000 , 7000); // 限幅
+  191   1        
+  192   1        return pid->Output;
+  193   1      }
+  194          
+  195          
+  196          
+  197          //取绝对值
+  198          int32 Absolute(int32 value)
+  199          {
+  200   1        if(value < 0) value = -value;
+  201   1        return value;
+  202   1      }
+  203          
+  204          //逐飞PD方案
+  205          int32 Postion_P2ID_Cal(RS_Incremental_PID *pid , int32 error ,float groyz , float kp2, float kd2)
+  206          {
+  207   1      //  if(error > 5 || error < -5) {kd2 = 0;}
+  208   1      //  else{kd2  = 0.022;}
+  209   1        pid->Err = error;
+  210   1        pid->p_out = pid->Kp * pid->Err + pid->Err*pid->Err*kp2;
+  211   1        pid->d_out = pid->Kd * (pid->Err - pid->Last_Err) + groyz*kd2;
+  212   1      
+  213   1        pid->Output = pid->p_out + pid->d_out;
+  214   1        
+  215   1        pid->Last_Err =  pid->Err;
+  216   1        
+  217   1        pid->Output = Clip(pid->Output,-5000 , 5000); // 限幅
+  218   1           p_=pid->p_out;
+  219   1        d_=pid->d_out;
+  220   1      
+  221   1        return pid->Output;
+  222   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =    ------     ------
+  ecode size           =      1330     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =       373         20
+  xdata-const size     =    ------     ------
+  edata size           =    ------     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =        42     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

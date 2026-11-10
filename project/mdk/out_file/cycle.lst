@@ -1,0 +1,1141 @@
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE cycle
+OBJECT MODULE PLACED IN .\out_file\cycle.obj
+COMPILER INVOKED BY: D:\ruanjian\51\C251\BIN\C251.EXE ..\code\cycle.c LARGE FLOAT64 ROM(HUGE) WARNINGLEVEL(3) OPTIMIZE(S
+                    -IZE) BROWSE INCDIR(..\..\libraries\zf_common;..\..\libraries\zf_components;..\..\libraries\zf_device;..\..\libraries\zf_
+                    -driver;..\user;..\code;..\..\libraries\zf_components\stc32g_usb_lib;..\..\libraries\zf_components\seekfree_assistant) DE
+                    -BUG PRINT(.\out_file\cycle.lst) TABS(2) OBJECT(.\out_file\cycle.obj) 
+
+stmt  level    source
+
+    1          #include "cycle.h"
+    2          
+    3          int Island_State=0;     //??????
+    4          int Left_Island_Flag=0; //??????
+    5          int Right_Island_Flag=0;//??????
+    6          int Left_Up_Guai[2];    //?????????,[0]?y,???,{1}?x,???
+    7          int Right_Up_Guai[2];   //?????????,[0]?y,???,{1}?x,???
+    8          int Ramp_Flag=0; 
+    9          uint16 add_line_counter = 0;
+   10          int h=0;
+   11          int count_flag=0;
+   12          //int b,c;
+   13          float a;
+   14          
+   15          //   ????????
+   16          int Continuity_Change_Left(int start,int end)
+   17          {
+   18   1          int i;
+   19   1          int t;
+   20   1          int continuity_change_flag=0;
+   21   1      //    int err_cnt = 0;  // ??????
+   22   1      
+   23   1          if(Left_Lost_Time>=0.9*MT9V03X_H)//??????,??????
+   24   1             return 0;
+   25   1          if(Search_Stop_Line<=5)//???????
+   26   1             return 0;
+   27   1          if(start>=MT9V03X_H-1-5)//??????
+   28   1              start=MT9V03X_H-1-5;
+   29   1          if(end<=5)
+   30   1             end=5;
+   31   1          if(start<end)//?????????,???????
+   32   1          {
+   33   2             t=start;
+   34   2             start=end;
+   35   2             end=t;
+   36   2          }
+   37   1      
+   38   1          for(i=start;i>=end;i--)
+   39   1          {
+   40   2              if(abs(left_edge_line[i]-left_edge_line[i-1])>=3)
+   41   2              {
+   42   3      //            err_cnt++;  // ??+1
+   43   3      
+   44   3                  // ?? 2 ???? ? ????????
+   45   3      //            if(err_cnt >= 3)
+   46   3      //            {
+   47   3                      continuity_change_flag = i;
+   48   3                      break;
+   49   3      //            }
+   50   3              }
+   51   2      //        else
+   52   2      //        {
+   53   2      //            err_cnt = 0;  // ?????,??????
+   54   2      //        }
+   55   2          }
+   56   1          return continuity_change_flag;
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 2   
+
+   57   1      }
+   58          
+   59          // ????????
+   60          int Continuity_Change_Right(int start,int end)
+   61          {
+   62   1          int i;
+   63   1          int t;
+   64   1          int continuity_change_flag=0;
+   65   1      //    int err_cnt = 0;  // ??:??????
+   66   1          
+   67   1          if(Right_Lost_Time>=0.9*MT9V03X_H)
+   68   1             return 0;  // ????? ? ??0(????)
+   69   1          if(start>=MT9V03X_H-5)
+   70   1              start=MT9V03X_H-5;
+   71   1          if(end<=5)
+   72   1             end=5;
+   73   1          if(start<end)
+   74   1          {
+   75   2             t=start;
+   76   2             start=end;
+   77   2             end=t;
+   78   2          }
+   79   1          for(i=start;i>=end;i--)
+   80   1          {
+   81   2              // ??????
+   82   2              if(abs(right_edge_line[i]-right_edge_line[i-1])>=3)
+   83   2              {
+   84   3      //            err_cnt++;  // ??+1
+   85   3                  
+   86   3                  // ??2???? ? ????????
+   87   3      //            if(err_cnt >= 3) 
+   88   3      //            {
+   89   3                      continuity_change_flag = i;
+   90   3                      break;
+   91   3      //            }
+   92   3              }
+   93   2      //        else
+   94   2      //        {
+   95   2      //            err_cnt = 0; // ??????
+   96   2      //        }
+   97   2          }
+   98   1          return continuity_change_flag;
+   99   1      }
+  100          
+  101           //??????
+  102          int Find_Left_Down_Point(int start,int end)//?????,???????????
+  103          {
+  104   1          int i,t;
+  105   1          int left_down_line=0;
+  106   1          if(Left_Lost_Time>=0.9*MT9V03X_H)//??????,?????????
+  107   1             return left_down_line;
+  108   1          if(start<end)
+  109   1          {
+  110   2              t=start;
+  111   2              start=end;
+  112   2              end=t;
+  113   2          }
+  114   1          if(start>=MT9V03X_H-1-5)//??5??????,??????????,??
+  115   1              start=MT9V03X_H-1-5;
+  116   1          if(end<=MT9V03X_H-Search_Stop_Line)
+  117   1              end=MT9V03X_H-Search_Stop_Line;
+  118   1          if(end<=5)
+  119   1             end=5;
+  120   1          for(i=start;i>=end;i--)
+  121   1          {
+  122   2              if(left_down_line==0&&//???????????
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 3   
+
+  123   2                 abs(left_edge_line[i]-left_edge_line[i+1])<=5&&//?????????
+  124   2                 abs(left_edge_line[i+1]-left_edge_line[i+2])<=5&&  
+  125   2                 abs(left_edge_line[i+2]-left_edge_line[i+3])<=5&&
+  126   2                    (left_edge_line[i]-left_edge_line[i-2])>=5&&
+  127   2                    (left_edge_line[i]-left_edge_line[i-3])>=10&&
+  128   2                    (left_edge_line[i]-left_edge_line[i-4])>=10)
+  129   2              {
+  130   3                  left_down_line=i;//??????
+  131   3                  break;
+  132   3              }
+  133   2          }
+  134   1          return left_down_line;
+  135   1      }
+  136          
+  137          // ??????
+  138          
+  139          int Find_Left_Up_Point(int start,int end)//?????,???????????
+  140          {
+  141   1          int i,t;
+  142   1          int left_up_line=0;
+  143   1          if(Left_Lost_Time>=0.9*MT9V03X_H)//??????,?????????
+  144   1             return left_up_line;
+  145   1          if(start<end)
+  146   1          {
+  147   2              t=start;
+  148   2              start=end;
+  149   2              end=t;
+  150   2          }
+  151   1          if(end<=MT9V03X_H-Search_Stop_Line)//????????????
+  152   1              end=MT9V03X_H-Search_Stop_Line;
+  153   1          if(end<=5)//?????????,???????,??????
+  154   1              end=5;
+  155   1          if(start>=MT9V03X_H-1-5)
+  156   1              start=MT9V03X_H-1-5;
+  157   1          for(i=start;i>=end;i--)
+  158   1          {
+  159   2              if(left_up_line==0&&//???????????
+  160   2                 abs(left_edge_line[i]-left_edge_line[i-1])<=5&&
+  161   2                 abs(left_edge_line[i-1]-left_edge_line[i-2])<=5&&  
+  162   2                 abs(left_edge_line[i-2]-left_edge_line[i-3])<=5&&
+  163   2                    (left_edge_line[i]-left_edge_line[i+2])>=8&& 
+  164   2                    (left_edge_line[i]-left_edge_line[i+3])>=15&&
+  165   2                    (left_edge_line[i]-left_edge_line[i+4])>=15)
+  166   2              {
+  167   3                  left_up_line=i;//??????
+  168   3                  break;
+  169   3              }
+  170   2          }
+  171   1          return left_up_line;//???MT9V03X_H-1,?????????
+  172   1      }
+  173          
+  174             // ??????
+  175          int Find_Right_Down_Point(int start,int end)//?????,???????????
+  176          {
+  177   1          int i,t;
+  178   1          int right_down_line=0;
+  179   1          if(Right_Lost_Time>=0.9*MT9V03X_H)//??????,?????????
+  180   1              return right_down_line;
+  181   1          if(start<end)
+  182   1          {
+  183   2              t=start;
+  184   2              start=end;
+  185   2              end=t;
+  186   2          }
+  187   1          if(start>=MT9V03X_H-1-5)//??5??????,??????????,??
+  188   1              start=MT9V03X_H-1-5;
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 4   
+
+  189   1          if(end<=MT9V03X_H-Search_Stop_Line)
+  190   1              end=MT9V03X_H-Search_Stop_Line;
+  191   1          if(end<=5)
+  192   1             end=5;
+  193   1          for(i=start;i>=end;i--)
+  194   1          {
+  195   2              if(right_down_line==0&&//???????????
+  196   2                 abs(right_edge_line[i]-right_edge_line[i+1])<=5&&//?????????
+  197   2                 abs(right_edge_line[i+1]-right_edge_line[i+2])<=5&&  
+  198   2                 abs(right_edge_line[i+2]-right_edge_line[i+3])<=5&&
+  199   2                    (right_edge_line[i]-right_edge_line[i-2])<=-5&&
+  200   2                    (right_edge_line[i]-right_edge_line[i-3])<=-10&&
+  201   2                    (right_edge_line[i]-right_edge_line[i-4])<=-10)
+  202   2              {
+  203   3                  right_down_line=i;//??????
+  204   3                  break;
+  205   3              }
+  206   2          }
+  207   1          return right_down_line;
+  208   1      }
+  209          
+  210          //??????
+  211          int Find_Right_Up_Point(int start,int end)//?????,???????????
+  212          {
+  213   1          int i,t;
+  214   1          int right_up_line=0;
+  215   1          if(Right_Lost_Time>=0.9*MT9V03X_H)//??????,?????????
+  216   1              return right_up_line;
+  217   1          if(start<end)
+  218   1          {
+  219   2              t=start;
+  220   2              start=end;
+  221   2              end=t;
+  222   2          }    
+  223   1          if(end<=MT9V03X_H-Search_Stop_Line)//????????????
+  224   1              end=MT9V03X_H-Search_Stop_Line;
+  225   1          if(end<=5)//?????????,???????,??????
+  226   1              end=5;
+  227   1          if(start>=MT9V03X_H-1-5)
+  228   1              start=MT9V03X_H-1-5;
+  229   1          for(i=start;i>=end;i--)
+  230   1          {
+  231   2              if(right_up_line==0&&//???????????
+  232   2                 abs(right_edge_line[i]-right_edge_line[i-1])<=5&&//?????????
+  233   2                 abs(right_edge_line[i-1]-right_edge_line[i-2])<=5&&  
+  234   2                 abs(right_edge_line[i-2]-right_edge_line[i-3])<=5&&
+  235   2                    (right_edge_line[i]-right_edge_line[i+2])<=-8&&
+  236   2                    (right_edge_line[i]-right_edge_line[i+3])<=-15&&
+  237   2                    (right_edge_line[i]-right_edge_line[i+4])<=-15)
+  238   2              {
+  239   3                  right_up_line=i;//??????
+  240   3                  break;
+  241   3              }
+  242   2          }
+  243   1          return right_up_line;
+  244   1      }
+  245          
+  246          
+  247          // ???????
+  248          int Monotonicity_Change_Left(int start,int end)//?????,???????????????
+  249          {
+  250   1          int i;
+  251   1          int monotonicity_change_line=0;
+  252   1      //    int valid_count = 0;   // ??????,???
+  253   1          if(Left_Lost_Time>=0.9*MT9V03X_H)//??????,??????????(??)
+  254   1             return monotonicity_change_line;
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 5   
+
+  255   1          if(start>=MT9V03X_H-1-5)//??????,????i???
+  256   1             start=MT9V03X_H-1-5; //??????5??,???????????????
+  257   1          if(end<=5)
+  258   1              end=5;
+  259   1          if(start<=end)//????,????,????0
+  260   1            return monotonicity_change_line;
+  261   1          for(i=start;i>=end;i--)//????5?5??,????????????
+  262   1          {
+  263   2      //       printf("111");
+  264   2              if(left_edge_line[i]==left_edge_line[i+5]&&left_edge_line[i]==left_edge_line[i-5]&&
+  265   2              left_edge_line[i]==left_edge_line[i+4]&&left_edge_line[i]==left_edge_line[i-4]&&
+  266   2              left_edge_line[i]==left_edge_line[i+3]&&left_edge_line[i]==left_edge_line[i-3]&&
+  267   2              left_edge_line[i]==left_edge_line[i+2]&&left_edge_line[i]==left_edge_line[i-2]&&
+  268   2              left_edge_line[i]==left_edge_line[i+1]&&left_edge_line[i]==left_edge_line[i-1])
+  269   2              {//??????,???????????
+  270   3      //            valid_count=0;
+  271   3                  continue;
+  272   3              }
+  273   2              else if(left_edge_line[i]>=left_edge_line[i+5]+3&&left_edge_line[i]>=left_edge_line[i-5]-3&&
+  274   2              left_edge_line[i]>=left_edge_line[i+4]+3&&left_edge_line[i]>=left_edge_line[i-4]-3&&
+  275   2              left_edge_line[i]>=left_edge_line[i+3]+3&&left_edge_line[i]>=left_edge_line[i-3]-3&&
+  276   2              left_edge_line[i]>=left_edge_line[i+2]+3&&left_edge_line[i]>=left_edge_line[i-2]-3&&
+  277   2              left_edge_line[i]>=left_edge_line[i+1]+3&&left_edge_line[i]>=left_edge_line[i-1]-3)
+  278   2      //        printf("222");
+  279   2      //        {//????,???????5,?5????(????),????????
+  280   2      //           valid_count++;
+  281   2      
+  282   2      //            // ?? 2 ??? ? ???????
+  283   2      //            if(valid_count >= 2)
+  284   2                  {
+  285   3                      monotonicity_change_line = i;
+  286   3                      break;
+  287   3                  }
+  288   2      //        }
+  289   2      //        else
+  290   2      //        {
+  291   2      //            valid_count = 0; // ??????,??????
+  292   2              }
+  293   1      //    }
+  294   1      //   printf("????=%d\r\n", monotonicity_change_line);
+  295   1          return monotonicity_change_line;
+  296   1      
+  297   1      }
+  298          
+  299          //???????
+  300          int Monotonicity_Change_Right(int start,int end)//?????,???????????????
+  301          {
+  302   1          int i;
+  303   1          int monotonicity_change_line=0;
+  304   1      //    int valid_count = 0;   // ????????
+  305   1        
+  306   1          if(Right_Lost_Time>=0.9*MT9V03X_H)//??????,??????????
+  307   1              return monotonicity_change_line;
+  308   1          if(start>=MT9V03X_H-1-5)//??????
+  309   1              start=MT9V03X_H-1-5;
+  310   1           if(end<=5)
+  311   1              end=5;
+  312   1          if(start<=end)
+  313   1              return monotonicity_change_line;
+  314   1          for(i=start;i>=end;i--)//????5?5??,????????????
+  315   1          {
+  316   2              if(right_edge_line[i]==right_edge_line[i+5]&&right_edge_line[i]==right_edge_line[i-5]&&
+  317   2              right_edge_line[i]==right_edge_line[i+4]&&right_edge_line[i]==right_edge_line[i-4]&&
+  318   2              right_edge_line[i]==right_edge_line[i+3]&&right_edge_line[i]==right_edge_line[i-3]&&
+  319   2              right_edge_line[i]==right_edge_line[i+2]&&right_edge_line[i]==right_edge_line[i-2]&&
+  320   2              right_edge_line[i]==right_edge_line[i+1]&&right_edge_line[i]==right_edge_line[i-1])
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 6   
+
+  321   2              {//??????,???????????
+  322   3      //            valid_count=0;
+  323   3                  continue;
+  324   3              }
+  325   2              else if(right_edge_line[i]<=right_edge_line[i+5]+3&&right_edge_line[i]<=right_edge_line[i-5]-3&&
+  326   2              right_edge_line[i]<=right_edge_line[i+4]+3&&right_edge_line[i]<=right_edge_line[i-4]-3&&
+  327   2              right_edge_line[i]<=right_edge_line[i+3]+3&&right_edge_line[i]<=right_edge_line[i-3]-3&&
+  328   2              right_edge_line[i]<=right_edge_line[i+2]+3&&right_edge_line[i]<=right_edge_line[i-2]-3&&
+  329   2              right_edge_line[i]<=right_edge_line[i+1]+3&&right_edge_line[i]<=right_edge_line[i-1]-3)
+  330   2              {//????,???????5,?5????,????????
+  331   3      //            valid_count++;
+  332   3      //             if(valid_count >= 2)
+  333   3      //            {
+  334   3                      monotonicity_change_line = i;
+  335   3                      break;
+  336   3      //            }
+  337   3      //        }
+  338   3      //        else
+  339   3      //        {
+  340   3      //            valid_count = 0;
+  341   3              }
+  342   2          }
+  343   1      
+  344   1          return monotonicity_change_line;
+  345   1      }
+  346          
+  347          
+  348          //????,????--
+  349          void K_Add_Boundry_Left(float k,int startX,int startY,int endY)
+  350          {
+  351   1          int i,t;
+  352   1          if(startY>=MT9V03X_H-1)
+  353   1              startY=MT9V03X_H-1;
+  354   1          else if(startY<=0)
+  355   1              startY=0;
+  356   1          if(endY>=MT9V03X_H-1)
+  357   1              endY=MT9V03X_H-1;
+  358   1          else if(endY<=0)
+  359   1              endY=0;
+  360   1          if(startY<endY)//--??,start???
+  361   1          {
+  362   2              t=startY;
+  363   2              startY=endY;
+  364   2              endY=t;
+  365   2          }
+  366   1          for(i=startY;i>=endY;i--)
+  367   1          {
+  368   2              left_edge_line[i]=(int)((i-startY)/k+startX);//(y-y1)=k(x-x1)??,x=(y-y1)/k+x1
+  369   2              if(left_edge_line[i]>=MT9V03X_W-1)
+  370   2              {
+  371   3                  left_edge_line[i]=MT9V03X_W-1;
+  372   3              }
+  373   2              else if(left_edge_line[i]<=0)
+  374   2              {
+  375   3                  left_edge_line[i]=0;
+  376   3              }
+  377   2          }
+  378   1      }
+  379          
+  380          // ????,????
+  381          void K_Add_Boundry_Right(float k,int startX,int startY,int endY)
+  382          {
+  383   1          int i,t;
+  384   1          add_line_counter++;
+  385   1          if(startY>=MT9V03X_H-1)
+  386   1              startY=MT9V03X_H-1;
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 7   
+
+  387   1          else if(startY<=0)
+  388   1              startY=0;
+  389   1          if(endY>=MT9V03X_H-1)
+  390   1              endY=MT9V03X_H-1;
+  391   1          else if(endY<=0)
+  392   1              endY=0;
+  393   1          if(startY<endY)
+  394   1          {
+  395   2              t=startY;
+  396   2              startY=endY;
+  397   2              endY=t;
+  398   2          }
+  399   1          for(i=startY;i>=endY;i--)
+  400   1          {
+  401   2              right_edge_line[i]=(int)((i-startY)/k+startX);//(y-y1)=k(x-x1)??,x=(y-y1)/k+x1
+  402   2              if(right_edge_line[i]>=MT9V03X_W-1)
+  403   2              {
+  404   3                  right_edge_line[i]=MT9V03X_W-1;
+  405   3              }
+  406   2              else if(right_edge_line[i]<=0)
+  407   2              {
+  408   3                  right_edge_line[i]=0;
+  409   3              }
+  410   2          }
+  411   1      }
+  412          
+  413          // ??????
+  414          int Get_Road_Wide(int start_line,int end_line)
+  415          {
+  416   1          int i=0,t=0;
+  417   1          int road_wide=0;
+  418   1          if(start_line>=MT9V03X_H-1)
+  419   1              start_line=MT9V03X_H-1;
+  420   1          else if(start_line<=0)
+  421   1              start_line=0;
+  422   1          if(end_line>=MT9V03X_H-1)
+  423   1              end_line=MT9V03X_H-1;
+  424   1          else if(end_line<=0)
+  425   1              end_line=0;
+  426   1          
+  427   1          if(start_line>end_line)//++??,??????
+  428   1          {
+  429   2              t=start_line;
+  430   2              start_line=end_line;
+  431   2              end_line=t;
+  432   2          }
+  433   1          for(i=start_line;i<=end_line;i++)
+  434   1          {
+  435   2              road_wide+=right_edge_line[i]-left_edge_line[i];
+  436   2          }
+  437   1          road_wide=road_wide/(end_line-start_line+1);//????
+  438   1          return road_wide;
+  439   1      }
+  440          
+  441          
+  442          /*-------------------------------------------------------------------------------------------------------
+             -------------
+  443            @brief     ?????
+  444            @param     ??????,?????
+  445            @return    null
+  446            Sample     Stop_Detect(void)
+  447            @note      ???????5??,????,????,?????
+  448          ---------------------------------------------------------------------------------------------------------
+             -----------*/
+  449          void Lengthen_Left_Boundry(int start,int end)
+  450          {
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 8   
+
+  451   1          int i,t;
+  452   1          float k=0;
+  453   1          if(start>=MT9V03X_H-1)//???????,?????????
+  454   1              start=MT9V03X_H-1;
+  455   1          else if(start<=0)
+  456   1              start=0;
+  457   1          if(end>=MT9V03X_H-1)
+  458   1              end=MT9V03X_H-1;
+  459   1          else if(end<=0)
+  460   1              end=0;
+  461   1          if(end<start)//++??,????
+  462   1          {
+  463   2              t=end;
+  464   2              end=start;
+  465   2              start=t;
+  466   2          }
+  467   1      
+  468   1          if(start<=5)//???????????3??,?????????,?????,??????
+  469   1          {
+  470   2               Left_Add_Line(left_edge_line[start],start,left_edge_line[end],end);
+  471   2          }
+  472   1      
+  473   1          else
+  474   1          {
+  475   2              k=(float)(left_edge_line[start]-left_edge_line[start-4])/5.0;//???k?1/??
+  476   2              for(i=start;i<=end;i++)
+  477   2              {
+  478   3                  left_edge_line[i]=(int)(i-start)*k+left_edge_line[start];//(x=(y-y1)*k+x1),?????
+  479   3                  if(left_edge_line[i]>=MT9V03X_W-1)
+  480   3                  {
+  481   4                      left_edge_line[i]=MT9V03X_W-1;
+  482   4                  }
+  483   3                  else if(left_edge_line[i]<=0)
+  484   3                  {
+  485   4                      left_edge_line[i]=0;
+  486   4                  }
+  487   3              }
+  488   2          }
+  489   1      }
+  490          
+  491          /*-------------------------------------------------------------------------------------------------------
+             -------------
+  492            @brief     ??????
+  493            @param     ??????,?????
+  494            @return    null
+  495            Sample     Stop_Detect(void)
+  496            @note      ???????3??,????,????,?????
+  497          ---------------------------------------------------------------------------------------------------------
+             -----------*/
+  498          void Lengthen_Right_Boundry(int start,int end)
+  499          {
+  500   1          int i,t;
+  501   1          float k=0;
+  502   1          if(start>=MT9V03X_H-1)//???????,?????????
+  503   1              start=MT9V03X_H-1;
+  504   1          else if(start<=0)
+  505   1              start=0;
+  506   1          if(end>=MT9V03X_H-1)
+  507   1              end=MT9V03X_H-1;
+  508   1          else if(end<=0)
+  509   1              end=0;
+  510   1          if(end<start)//++??,????
+  511   1          {
+  512   2              t=end;
+  513   2              end=start;
+  514   2              start=t;
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 9   
+
+  515   2          }
+  516   1      
+  517   1          if(start<=5)//???????????3??,?????????,?????,??????
+  518   1          {
+  519   2              Right_Add_Line(right_edge_line[start],start,right_edge_line[end],end);
+  520   2          }
+  521   1          else
+  522   1          {
+  523   2              k=(float)(right_edge_line[start]-right_edge_line[start-4])/5.0;//???k?1/??
+  524   2              for(i=start;i<=end;i++)
+  525   2              {
+  526   3                  right_edge_line[i]=(int)(i-start)*k+right_edge_line[start];//(x=(y-y1)*k+x1),?????
+  527   3                  if(right_edge_line[i]>=MT9V03X_W-1)
+  528   3                  {
+  529   4                      right_edge_line[i]=MT9V03X_W-1;
+  530   4                  }
+  531   3                  else if(right_edge_line[i]<=0)
+  532   3                  {
+  533   4                      right_edge_line[i]=0;
+  534   4                  }
+  535   3              }
+  536   2          }
+  537   1      }
+  538          
+  539          //???
+  540          void Left_Add_Line(int x1,int y1,int x2,int y2)//???,?????
+  541          {
+  542   1          int i,max,a1,a2;
+  543   1          int hx;
+  544   1          if(x1>=MT9V03X_W-1)//???????,?????????
+  545   1             x1=MT9V03X_W-1;
+  546   1          else if(x1<=0)
+  547   1              x1=0;
+  548   1           if(y1>=MT9V03X_H-1)
+  549   1              y1=MT9V03X_H-1;
+  550   1           else if(y1<=0)
+  551   1              y1=0;
+  552   1           if(x2>=MT9V03X_W-1)
+  553   1              x2=MT9V03X_W-1;
+  554   1           else if(x2<=0)
+  555   1                   x2=0;
+  556   1           if(y2>=MT9V03X_H-1)
+  557   1              y2=MT9V03X_H-1;
+  558   1           else if(y2<=0)
+  559   1                   y2=0;
+  560   1          a1=y1;
+  561   1          a2=y2;
+  562   1          if(a1>a2)//????
+  563   1          {
+  564   2              max=a1;
+  565   2              a1=a2;
+  566   2              a2=max;
+  567   2          }
+  568   1          for(i=a1;i<=a2;i++)//????????
+  569   1          {
+  570   2              hx=(i-y1)*(x2-x1)/(y2-y1)+x1;
+  571   2              if(hx>=MT9V03X_W)
+  572   2                  hx=MT9V03X_W;
+  573   2              else if(hx<=0)
+  574   2                  hx=0;
+  575   2              left_edge_line[i]=hx;
+  576   2          }
+  577   1      }
+  578          
+  579          /*-------------------------------------------------------------------------------------------------------
+             -------------
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 10  
+
+  580            @brief     ???
+  581            @param     ?????,??
+  582            @return    null
+  583            Sample     Right_Add_Line(int x1,int y1,int x2,int y2);
+  584            @note      ???????,?????????,????
+  585          ---------------------------------------------------------------------------------------------------------
+             -----------*/
+  586          void Right_Add_Line(int x1,int y1,int x2,int y2)//???,?????
+  587          {
+  588   1          int i,max,a1,a2;
+  589   1          int hx;
+  590   1          if(x1>=MT9V03X_W-1)//???????,?????????
+  591   1             x1=MT9V03X_W-1;
+  592   1          else if(x1<=0)
+  593   1              x1=0;
+  594   1          if(y1>=MT9V03X_H-1)
+  595   1              y1=MT9V03X_H-1;
+  596   1          else if(y1<=0)
+  597   1              y1=0;
+  598   1          if(x2>=MT9V03X_W-1)
+  599   1              x2=MT9V03X_W-1;
+  600   1          else if(x2<=0)
+  601   1              x2=0;
+  602   1          if(y2>=MT9V03X_H-1)
+  603   1              y2=MT9V03X_H-1;
+  604   1          else if(y2<=0)
+  605   1               y2=0;
+  606   1          a1=y1;
+  607   1          a2=y2;
+  608   1          if(a1>a2)//????
+  609   1          {
+  610   2              max=a1;
+  611   2              a1=a2;
+  612   2              a2=max;
+  613   2          }
+  614   1          for(i=a1;i<=a2;i++)//????????
+  615   1          {
+  616   2              hx=(i-y1)*(x2-x1)/(y2-y1)+x1;
+  617   2              if(hx>=MT9V03X_W)
+  618   2                  hx=MT9V03X_W;
+  619   2              else if(hx<=0)
+  620   2                  hx=0;
+  621   2              right_edge_line[i]=hx;
+  622   2          }
+  623   1      }
+  624          //????
+  625          void Island_Detect()
+  626          { 
+  627   1          static float k=0;//3?5???k
+  628   1          static int island_state_5_down[2]={0};//??5???????,????????,[0]?y,???,{1}?x,???
+  629   1          static int island_state_3_up[2]={0};//??3????????,??????[0]?y,???,{1}?x,???
+  630   1          int left_down_guai[2]={0};//?????????,[0]?y,???,{1}?x,???
+  631   1          int right_down_guai[2]={0};//?????????,[0]?y,???,{1}?x,???
+  632   1          int monotonicity_change_line[2];//????????,[0]???,[1]???
+  633   1          int monotonicity_change_left_flag=0;//????0
+  634   1          int monotonicity_change_right_flag=0;//????0
+  635   1          int continuity_change_right_flag=0; //???0
+  636   1          int continuity_change_left_flag=0;  //???0
+  637   1      //    int count_flag=0;
+  638   1      //    ips200_show_float(50,220,FJ_Angle);
+  639   1      //    printf("error = %d\r\n", Img_error);
+  640   1      //    printf("Island_State = %d\r\n", Island_State);
+  641   1          //????????
+  642   1          continuity_change_left_flag=Continuity_Change_Left(MT9V03X_H-10,10);//?????
+  643   1          continuity_change_right_flag=Continuity_Change_Right(MT9V03X_H-10,10);
+  644   1          monotonicity_change_right_flag=Monotonicity_Change_Right(MT9V03X_H-10,10);
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 11  
+
+  645   1          monotonicity_change_left_flag=Monotonicity_Change_Left(MT9V03X_H-10,10);
+  646   1          
+  647   1          
+  648   1      //    printf(" L_C=%d R_C=%d L_M=%d | R_M=%d\r\n",
+  649   1      //       continuity_change_left_flag,
+  650   1      //       continuity_change_right_flag,
+  651   1      //       monotonicity_change_left_flag,
+  652   1      //       monotonicity_change_right_flag);
+  653   1      //       ips200_show_int16(0,260,continuity_change_left_flag);  // ????
+  654   1      //       ips200_show_int16(0,280,continuity_change_right_flag); // ????
+  655   1      //       ips200_show_int16(0,300,monotonicity_change_left_flag);
+  656   1      ////       ips200_show_int16(60,300,monotonicity_change_right_flag);
+  657   1      //    //
+  658   1          if(Straight_Flag==0&&Island_State==0)//&&Ramp_Flag==0
+  659   1          {
+  660   2      //        continuity_change_left_flag=Continuity_Change_Left(MT9V03X_H-1-5,10);//?????              // ?
+  661   2      //        continuity_change_right_flag=Continuity_Change_Right(MT9V03X_H-1-5,10);
+  662   2              if(Left_Island_Flag==0)//??
+  663   2              {
+  664   3                  if(monotonicity_change_right_flag==0&& //??????
+  665   3                     continuity_change_left_flag!=0&& //???????
+  666   3                     continuity_change_right_flag==0&& //?????????
+  667   3      //         monotonicity_change_left_flag!=0&&
+  668   3                     Left_Lost_Time>=20&& //??????
+  669   3                     Left_Lost_Time<=50&& //??????
+  670   3                     Right_Lost_Time<=10&&//??????
+  671   3                     Search_Stop_Line>=70&& //?????????
+  672   3                     Boundry_Start_Left>=MT9V03X_H-20&&
+  673   3                     Boundry_Start_Right>=MT9V03X_H-20&& //???????
+  674   3                     Both_Lost_Time<=10
+  675   3                     )//?????
+  676   3                  // ???????????
+  677   3                  {
+  678   4                      left_down_guai[0]=Find_Left_Down_Point(MT9V03X_H-1,20);//?????
+  679   4                      if(left_down_guai[0]>=30)//??1??,???????,????,????,??
+  680   4                      {
+  681   5      
+  682   5                          Island_State=1;
+  683   5                          Left_Island_Flag=1;
+  684   5                      }
+  685   4                      else//??,??
+  686   4                      {
+  687   5                          Island_State=0;
+  688   5                          Left_Island_Flag=0;
+  689   5                      }
+  690   4                  }
+  691   3              }
+  692   2              if(Right_Island_Flag==0)//??
+  693   2              {
+  694   3                  if(monotonicity_change_left_flag==0&&
+  695   3                     continuity_change_left_flag==0&& //?????????
+  696   3                     continuity_change_right_flag!=0&& //???????
+  697   3      //         monotonicity_change_right_flag!=0&&
+  698   3                     Right_Lost_Time>=20&&           //????
+  699   3                     Right_Lost_Time<=50&&           //???????
+  700   3                     Left_Lost_Time<=10&&            //????
+  701   3                     Search_Stop_Line>=70&& //?????????
+  702   3                     Boundry_Start_Left>=MT9V03X_H-20&&
+  703   3                     Boundry_Start_Right>=MT9V03X_H-20&& //???????
+  704   3                     Both_Lost_Time<=10
+  705   3                     )
+  706   3                  {
+  707   4                      right_down_guai[0]=Find_Right_Down_Point(MT9V03X_H-1,20);//???
+  708   4                      if(right_down_guai[0]>=30)//??1??,???????,????,????,??
+  709   4                      {
+  710   5                          Island_State=1;
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 12  
+
+  711   5                          Right_Island_Flag=1;
+  712   5                      }
+  713   4                      else
+  714   4                      {
+  715   5                          Island_State=0;
+  716   5                          Right_Island_Flag=0;
+  717   5                      }
+  718   4                  }
+  719   3              }
+  720   2          }
+  721   1      
+  722   1          if(Left_Island_Flag==1)//1???????,???
+  723   1          {
+  724   2              if(Island_State==1)
+  725   2              {
+  726   3                  monotonicity_change_line[0]=Continuity_Change_Left(30,2);//???????? 
+  727   3                  monotonicity_change_line[1]=left_edge_line[monotonicity_change_line[0]];
+  728   3                  if(monotonicity_change_line[1]<30)
+  729   3                  {
+  730   4                    h=1;
+  731   4      //              h=4;
+  732   4      //            }else{
+  733   4      //              Left_Add_Line((int)(monotonicity_change_line[1]*0.29),MT9V03X_H-1,monotonicity_change_line[1],mo
+             -notonicity_change_line[0]);
+  734   4                  }
+  735   3                  if(Boundry_Start_Left<40)
+  736   3                  {
+  737   4                   if((continuity_change_right_flag!=0)&&(monotonicity_change_right_flag!=0))
+  738   4                   {
+  739   5                      Island_State=0;
+  740   5                      Left_Island_Flag=0;
+  741   5                      FJ_Angle=0;
+  742   5                   }else{
+  743   5                      Island_State=2;
+  744   5      //                Beep=1;
+  745   5      //                system_delay_ms(50); // ??50ms
+  746   5      //                Beep=0;
+  747   5                   }
+  748   4                 }  
+  749   3              }
+  750   2              else if(Island_State==2)//??????,2??????????,?????
+  751   2              {
+  752   3                  monotonicity_change_line[0]=Continuity_Change_Left(70,5);//????????
+  753   3                  monotonicity_change_line[1]=left_edge_line[monotonicity_change_line[0]];
+  754   3      //            ips200_show_int16(0,260,monotonicity_change_line[0]);  // ????
+  755   3      //            Left_Add_Line((int)(monotonicity_change_line[1]*0.1),MT9V03X_H-1,monotonicity_change_line[1
+             -],monotonicity_change_line[0]);
+  756   3      //            h=2;
+  757   3                  if(monotonicity_change_line[0]>65)//???????,?3
+  758   3                  {
+  759   4                      Island_State=3;//???????????,?camera.c
+  760   4      //                Beep=1;
+  761   4      //                system_delay_ms(50); // ??50ms
+  762   4      //                Beep=0;
+  763   4                  }
+  764   3              }
+  765   2              else if(Island_State==3)//3??????,?????,??
+  766   2              {
+  767   3      //          h=3;
+  768   3                  if(k!=0)
+  769   3                  {
+  770   4      //           ips200_show_float(50,140,k);  
+  771   4      //            ips200_show_uint8(50,160,island_state_3_up[0]);
+  772   4                    K_Add_Boundry_Right(k,MT9V03X_W-10,MT9V03X_H-1,island_state_3_up[0]);//?????????????,???????????,?
+             -?
+  773   4                  }
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 13  
+
+  774   3                  else
+  775   3                  {
+  776   4                      Left_Up_Guai[0]=Find_Left_Up_Point(75,5);//?????
+  777   4      //                ips200_show_uint8(50,100,Left_Up_Guai[0]);
+  778   4                      Left_Up_Guai[1]=left_edge_line[Left_Up_Guai[0]];
+  779   4      //                ips200_show_uint8(50,120,Left_Up_Guai[1]);
+  780   4                      if(k==0&&(10<=Left_Up_Guai[0]&&Left_Up_Guai[0]<60)&&(20<Left_Up_Guai[1]&&Left_Up_Guai[1]<
+             -120))//??????????,???????
+  781   4                      {
+  782   5                          island_state_3_up[0]= Left_Up_Guai[0];
+  783   5                          island_state_3_up[1]= Left_Up_Guai[1];
+  784   5      //                    ips200_show_uint8(50,160,island_state_3_up[1]);
+  785   5                          k=(float)((float)(MT9V03X_H-island_state_3_up[0])/(float)(MT9V03X_W-20-island_state_3
+             -_up[1]));
+  786   5      //                    ips200_show_float(50,180,k);  
+  787   5                          K_Add_Boundry_Right(k,MT9V03X_W-10,MT9V03X_H-1,island_state_3_up[0]);//?????????????,?????????
+             -??,??
+  788   5      //                }else{
+  789   5      //                  h=12;
+  790   5                      }
+  791   4                  }
+  792   3                  if(abs(FJ_Angle)>=50) 
+  793   3                  {             
+  794   4                      k=0;//????
+  795   4                      Island_State=4;//???????????????????
+  796   4      //                Beep=1;
+  797   4      //                system_delay_ms(50); // ??50ms
+  798   4      //                Beep=0;
+  799   4                      Image_Pro_1();//????
+  800   4                  }
+  801   3              }
+  802   2              else if(Island_State==4)//??4?????   
+  803   2              {
+  804   3                
+  805   3                  if(abs(FJ_Angle)>200)//??200??????????
+  806   3                  {
+  807   4                      monotonicity_change_line[0]=Continuity_Change_Right(MT9V03X_H-10,10);//?????
+  808   4      //                ips200_show_int16(0,260,monotonicity_change_line[0]);
+  809   4                      monotonicity_change_line[1]=right_edge_line[monotonicity_change_line[0]];
+  810   4      //                ips200_show_int16(0,280,monotonicity_change_line[1]);
+  811   4                      if((Island_State==4)&&(35<=monotonicity_change_line[0]&&monotonicity_change_line[0]<=70&&
+             -monotonicity_change_line[1]>=10))//?????,??5
+  812   4                      {//monotonicity_change_line[1]>=90&&
+  813   5                          island_state_5_down[0]=MT9V03X_H-5; 
+  814   5                          island_state_5_down[1]=right_edge_line[MT9V03X_H-5];
+  815   5                           
+  816   5                          k=(float)((float)(MT9V03X_H-monotonicity_change_line[0])/(float)(island_state_5_down[
+             -1]-monotonicity_change_line[1]));
+  817   5      //                  ips200_show_float(0,220,k);
+  818   5      //                  ips200_show_uint16(0,240,island_state_5_down[1]);
+  819   5      //                  ips200_show_uint16(0,260,island_state_5_down[0]);
+  820   5                          K_Add_Boundry_Right(k,island_state_5_down[1],island_state_5_down[0],30);//???3??,????
+  821   5                          Island_State=5;
+  822   5      //                     Beep=1;
+  823   5      //                     system_delay_ms(50); // ??50ms
+  824   5      //                     Beep=0;
+  825   5                      }
+  826   4                  }
+  827   3              }
+  828   2              else if(Island_State==5)//??
+  829   2              {
+  830   3      //            ips200_show_uint16(0, 270, add_line_counter);
+  831   3      //             ips200_show_float(80,220,k);
+  832   3      //             ips200_show_uint16(80,240,island_state_5_down[1]);
+  833   3      //            ips200_show_uint16(80,260,island_state_5_down[0]);
+  834   3      //            K_Add_Boundry_Right(k,island_state_5_down[1],island_state_5_down[0],0);
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 14  
+
+  835   3                  if((Island_State==5)&&(Boundry_Start_Right<MT9V03X_H-10))//?????
+  836   3                  {
+  837   4                      Island_State=6;
+  838   4      //                Beep=1;
+  839   4      //                system_delay_ms(50); // ??50ms
+  840   4      //                Beep=0;
+  841   4                  }
+  842   3              }
+  843   2              else if(Island_State==6)//???
+  844   2              {
+  845   3                  K_Add_Boundry_Right(k,island_state_5_down[1],island_state_5_down[0],0);
+  846   3      //                              ips200_show_float(50,180,k);
+  847   3                  if((Island_State==6)&&((Boundry_Start_Right>MT9V03X_H-10)||(abs(FJ_Angle)>=300)))//?????
+  848   3                  {
+  849   4                      k=0;
+  850   4                      Island_State=7;
+  851   4      //                Beep=1;
+  852   4      //                system_delay_ms(50); // ??50ms
+  853   4                      Beep=0;
+  854   4                  }
+  855   3              }
+  856   2              else if(Island_State==7)//?????,?????,????????
+  857   2              {
+  858   3                  Left_Up_Guai[0]=Find_Left_Up_Point(MT9V03X_H-10,0);//???????,??????8
+  859   3                  Left_Up_Guai[1]=left_edge_line[Left_Up_Guai[0]];
+  860   3                  if((Island_State==7)&&(Left_Up_Guai[1]<=90)&&(5<=Left_Up_Guai[0]&&Left_Up_Guai[0]<=MT9V03X_H-
+             -20))//????,?????????
+  861   3                  {
+  862   4                      Island_State=8;//?????????8
+  863   4      //                Beep=1;
+  864   4      //                system_delay_ms(50); // ??50ms
+  865   4      //                Beep=0;
+  866   4                  }
+  867   3              }
+  868   2              else if(Island_State==8)//??,??????
+  869   2              {
+  870   3                  Left_Up_Guai[0]=Find_Left_Up_Point(MT9V03X_H-1,10);//???????
+  871   3                  Left_Up_Guai[1]=left_edge_line[Left_Up_Guai[0]];
+  872   3                  if((Island_State==8)&&(Left_Up_Guai[0]>=MT9V03X_H-20||(Left_Up_Guai[0]<10&&Boundry_Start_Left
+             ->=MT9V03X_H-10)))//???????,?????,????
+  873   3                  {//??????,??????,??????,???????
+  874   4                      FJ_Angle=0;//????
+  875   4                      Island_State=0;//8?????????,????????,8???9,?????????,
+  876   4      //                Beep=1;
+  877   4      //                system_delay_ms(50); // ??50ms
+  878   4      //                Beep=0;
+  879   4                      Left_Island_Flag=0;
+  880   4      //                h=5;
+  881   4                      count_flag++;
+  882   4                  }
+  883   3              }   
+  884   2          }           
+  885   1          else if(Right_Island_Flag==1)
+  886   1          {
+  887   2            
+  888   2              if(Island_State==1)//1???????,???
+  889   2              {
+  890   3                  monotonicity_change_line[0]=Continuity_Change_Right(30,2);//?????
+  891   3                  monotonicity_change_line[1]=right_edge_line[monotonicity_change_line[0]];
+  892   3      //            ips200_show_uint16(0,260,monotonicity_change_line[0]);
+  893   3      //            ips200_show_uint16(50,260,monotonicity_change_line[1]);
+  894   3                if(monotonicity_change_line[1]<30)
+  895   3                  {
+  896   4      //            h=2;
+  897   4      //            }else{
+  898   4      //             Right_Add_Line((int)(monotonicity_change_line[1]*1.3), MT9V03X_H-1,monotonicity_change_line[1],m
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 15  
+
+             -onotonicity_change_line[0]);    
+  899   4      //                    Beep=1;
+  900   4      //                    system_delay_ms(50); // ??50ms
+  901   4      //                    Beep=0;
+  902   4                  }
+  903   3                 if(Boundry_Start_Right<40)
+  904   3                  {
+  905   4                   if((continuity_change_left_flag!=0)&&(monotonicity_change_left_flag!=0))
+  906   4                   {
+  907   5                     Island_State=0;
+  908   5                     Right_Island_Flag=0;
+  909   5                     FJ_Angle=0;
+  910   5                   }else{
+  911   5                     Beep=1;
+  912   5      //               system_delay_ms(50); // ??50ms
+  913   5      //               Beep=0;
+  914   5                     Island_State=2;
+  915   5                   }
+  916   4                 }
+  917   3               }
+  918   2              else if(Island_State==2)//2??????,?????????
+  919   2              {
+  920   3                  monotonicity_change_line[0]=Continuity_Change_Right(70,5);//?????
+  921   3                  monotonicity_change_line[1]=right_edge_line[monotonicity_change_line[0]];
+  922   3      //            a = monotonicity_change_line[0];
+  923   3      ////            ips200_show_uint16(0,280,monotonicity_change_line[0]);
+  924   3      ////            ips200_show_uint16(50,260,monotonicity_change_line[1]);
+  925   3      //            Right_Add_Line((int)(monotonicity_change_line[1]*1.3),MT9V03X_H-1,monotonicity_change_line[
+             -1],monotonicity_change_line[0]); 
+  926   3                if((monotonicity_change_line[0]>65)
+  927   3      //              && right_edge_line[79] <= 179
+  928   3      //              && right_edge_line[77] <= 179
+  929   3                  )//????????3
+  930   3                  {
+  931   4      //                Beep=1;
+  932   4      //                system_delay_ms(50); // ??50ms
+  933   4                      Beep=0;
+  934   4                      Island_State=3;//????,??????????
+  935   4                      Right_Island_Flag=1;
+  936   4                  }
+  937   3              }
+  938   2              else if(Island_State==3)//?????????,???????
+  939   2              {
+  940   3      //            ips200_show_uint16(0,300,k);
+  941   3                  if(k!=0)//????????,?????
+  942   3                  {
+  943   4                      K_Add_Boundry_Left(k,10,MT9V03X_H-1,island_state_3_up[0]);//?????????????,???????????,??
+  944   4      //                h=14;
+  945   4                    
+  946   4                  }
+  947   3                  else
+  948   3                  {
+  949   4                      Right_Up_Guai[0]=Find_Right_Up_Point(75,5);//?????
+  950   4                      Right_Up_Guai[1]=right_edge_line[Right_Up_Guai[0]];
+  951   4                      if(k==0&&(10<=Right_Up_Guai[0]&&Right_Up_Guai[0]<60)&&(40<Right_Up_Guai[1]&&Right_Up_Guai
+             -[1]<160))//???????????,??
+  952   4                      {
+  953   5                          island_state_3_up[0]= Right_Up_Guai[0];
+  954   5                          island_state_3_up[1]= Right_Up_Guai[1];
+  955   5      //                    ips200_show_uint8(0,260,island_state_3_up[0]);
+  956   5      //                    ips200_show_uint8(50,260,island_state_3_up[1]);
+  957   5                          k=(float)((float)(MT9V03X_H-island_state_3_up[0])/(float)(20-island_state_3_up[1]));
+  958   5                   K_Add_Boundry_Left(k,10,MT9V03X_H-1,island_state_3_up[0]);//?????????????,???????????,??
+  959   5                        a=k;
+  960   5      //                } else{
+  961   5      //                  h=13;
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 16  
+
+  962   5                      }
+  963   4                  }
+  964   3                  
+  965   3                  if(abs(FJ_Angle)>=50)  //????????
+  966   3                  {
+  967   4      //                Beep=1;
+  968   4      //                system_delay_ms(50); // ??50ms
+  969   4      //                Beep=0;
+  970   4                      k=0;      //????
+  971   4                      Island_State=4;
+  972   4                      Image_Pro();//????
+  973   4                  }//????????????,???????
+  974   3              }
+  975   2              else if(Island_State==4)//4?????????
+  976   2              {
+  977   3                  if(abs(FJ_Angle)>=195)//????200???????????
+  978   3                  {
+  979   4      //                Beep=1;
+  980   4      //                system_delay_ms(50); // ??50ms
+  981   4      //                Beep=0;
+  982   4                      monotonicity_change_line[0]=Continuity_Change_Left(70,10);//?????
+  983   4      //                ips200_show_int16(0,260,monotonicity_change_line[0]);
+  984   4                      monotonicity_change_line[1]=left_edge_line[monotonicity_change_line[0]];
+  985   4      //                ips200_show_int16(60,260,monotonicity_change_line[1]);
+  986   4                      if((Island_State==4)&&(35<=monotonicity_change_line[0]&&monotonicity_change_line[0]<=70&&
+             -monotonicity_change_line[1]<MT9V03X_W-10))//?????,??5
+  987   4                      {
+  988   5                         island_state_5_down[0]=MT9V03X_H-5;
+  989   5                         island_state_5_down[1]=left_edge_line[MT9V03X_H-1]-5;//??????????,??
+  990   5                         k=(float)((float)(MT9V03X_H-monotonicity_change_line[0])/(float)(island_state_5_down[1
+             -]-monotonicity_change_line[1]));
+  991   5                         K_Add_Boundry_Left(k,island_state_5_down[1],island_state_5_down[0],30);
+  992   5                         Island_State=5;
+  993   5      //           Beep=1;
+  994   5      //                  system_delay_ms(50); // ??50ms
+  995   5      //                   Beep=0;
+  996   5                      }
+  997   4                  }
+  998   3              }
+  999   2              else if(Island_State==5)//?????
+ 1000   2              {
+ 1001   3      //            K_Add_Boundry_Left(k,island_state_5_down[1],island_state_5_down[0],0);
+ 1002   3                  if(Island_State==5&&Boundry_Start_Left<MT9V03X_H-15)//?????
+ 1003   3                  {
+ 1004   4      //                Beep=1;
+ 1005   4      //                system_delay_ms(50); // ??50ms
+ 1006   4      //          Beep=0;
+ 1007   4                      Island_State=6;
+ 1008   4                  }
+ 1009   3              }
+ 1010   2              else if(Island_State==6)//???
+ 1011   2              {
+ 1012   3                  K_Add_Boundry_Left(k,island_state_5_down[1],island_state_5_down[0],0);
+ 1013   3                  if((Island_State==6)&&(Boundry_Start_Left>MT9V03X_H-10||abs(FJ_Angle)>=300))//?????
+ 1014   3                  {
+ 1015   4                      k=0;
+ 1016   4      //                Beep=1;
+ 1017   4      //                system_delay_ms(50); // ??50ms
+ 1018   4      //                Beep=0;
+ 1019   4                      Island_State=7;
+ 1020   4                  }
+ 1021   3              }
+ 1022   2              else if(Island_State==7)//?????,???
+ 1023   2              {
+ 1024   3                  Right_Up_Guai[0]=Find_Right_Up_Point(MT9V03X_H-10,0);//???????,????8
+ 1025   3                  Right_Up_Guai[1]=right_edge_line[Right_Up_Guai[0]];
+C251 COMPILER V5.60.0,  cycle                                                              10/11/26  15:54:03  PAGE 17  
+
+ 1026   3                  if((Island_State==7)&&((Right_Up_Guai[1]>=MT9V03X_W-90&&(5<=Right_Up_Guai[0]&&Right_Up_Guai[0
+             -]<=MT9V03X_H-20))))//????,?????????,???????,???????
+ 1027   3                  {//????????,?8
+ 1028   4      //                Beep=1;
+ 1029   4      //                system_delay_ms(50); // ??50ms
+ 1030   4      //                Beep=1;
+ 1031   4                      Island_State=8;
+ 1032   4                  }
+ 1033   3              }
+ 1034   2              else if(Island_State==8)//??8
+ 1035   2              {
+ 1036   3                  Right_Up_Guai[0]=Find_Right_Up_Point(MT9V03X_H-1,10);//???????
+ 1037   3                  Right_Up_Guai[1]=right_edge_line[Right_Up_Guai[0]];
+ 1038   3      //            Lengthen_Right_Boundry(Right_Up_Guai[0]-1,MT9V03X_H-1);
+ 1039   3                  if((Island_State==8)&&(Right_Up_Guai[0]>=MT9V03X_H-20||(Right_Up_Guai[0]<10&&Boundry_Start_Le
+             -ft>=MT9V03X_H-10)))//???????,?????,????
+ 1040   3                  {//????,???????,?????
+ 1041   4      //                Beep=0;
+ 1042   4                      FJ_Angle=0;
+ 1043   4                      Island_State=0;
+ 1044   4                      Right_Island_Flag=0;
+ 1045   4                      count_flag++;
+ 1046   4                  }
+ 1047   3              }
+ 1048   2          }
+ 1049   1      }
+*** WARNING C183 IN LINE 416 OF ..\code\cycle.c: dead assignment eliminated
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =    ------     ------
+  ecode size           =      7117     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =        38         32
+  xdata-const size     =    ------     ------
+  edata size           =    ------     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =        84     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

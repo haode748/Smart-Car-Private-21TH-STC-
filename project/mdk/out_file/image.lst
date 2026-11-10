@@ -1,0 +1,922 @@
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE image
+OBJECT MODULE PLACED IN .\out_file\image.obj
+COMPILER INVOKED BY: D:\ruanjian\51\C251\BIN\C251.EXE ..\code\image.c LARGE FLOAT64 ROM(HUGE) WARNINGLEVEL(3) OPTIMIZE(S
+                    -IZE) BROWSE INCDIR(..\..\libraries\zf_common;..\..\libraries\zf_components;..\..\libraries\zf_device;..\..\libraries\zf_
+                    -driver;..\user;..\code;..\..\libraries\zf_components\stc32g_usb_lib;..\..\libraries\zf_components\seekfree_assistant) DE
+                    -BUG PRINT(.\out_file\image.lst) TABS(2) OBJECT(.\out_file\image.obj) 
+
+stmt  level    source
+
+    1          #include "Image.h"
+    2          
+    3          uint8 reference_point = 0;
+    4          uint8 reference_col = 0;
+    5          uint8 white_max_point = 0;
+    6          uint8 white_min_point = 0;
+    7          uint8 reference_contrast_ratio = 30;                // ³õÊ¼»¯¶Ô±È¶ÈãÐÖµ£¨¿É¸ù¾ÝÊµ¼Êµ÷ÊÔ£©
+    8          uint8 reference_col_line[SEARCH_IMAGE_H] = {0};
+    9          uint8 remote_distance[SEARCH_IMAGE_W] = {0};
+   10          uint16 left_edge_line[SEARCH_IMAGE_H] = {0};
+   11          uint16 right_edge_line[SEARCH_IMAGE_H] = {0};
+   12          uint16 Road_Wide[SEARCH_IMAGE_H] = {0};           //Â·¿í
+   13          uint32 if_count = 0;
+   14          uint8 Cross_flag = 0;                  // Ê®×Ö¼ì²â±êÖ¾Î»
+   15          uint8 current_col = 0;  
+   16          int Left_Lost_Time = 0;          //×ó¶ªÏß
+   17          int Right_Lost_Time = 0;         //ÓÒ¶ªÏß
+   18          int Both_Lost_Time = 0;          //×óÓÒ¶¼¶ªÏß
+   19          int Boundry_Start_Left = STOPROW;    // ×óÓÐÐ§Æðµã£¬Ä¬ÈÏ×îÔ¶ÐÐ
+   20          int Boundry_Start_Right = STOPROW;   // ÓÒÓÐÐ§Æðµã£¬Ä¬ÈÏ×îÔ¶ÐÐ
+   21          int Search_Stop_Line=0;                //ËÑË÷½ØÖ¹ÐÐ
+   22          uint8 start_flag=0;
+   23          // Í¼ÏñÎó²î
+   24          int32 cycle_error=0 ;
+   25          int32  Img_error=0 ;
+   26          int32  Img_error_1=0 ;
+   27          int32  Img_error_last=0 ;
+   28          
+   29          //// ÈüµÀ¿í¶È ×óÓÒ±ßÏß±ä»¯
+   30          //int16 RS_width_cacul = 0;
+   31          //int16 RS_left_cacul = 0;
+   32          //int16 RS_right_cacul = 0;
+   33          uint8 Weight_1[MT9V03X_H] = {           /// //////////////////////////////////////////////ÖÐÏß¼ÓÈ¨ÇóÈ¨ÖØÔ½ÍùÉÏ
+             -¿¿£¬³µ×ªÍäÔ½Ôç
+   34                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   //??í¨?°?°
+   35                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                                    // 10-19DD?oè¨??1
+   36                      1, 1, 1, 1, 1, 1, 6, 7,8,  13, 
+   37                      13,13,10,11,12,13, 14,15,1, 16,
+   38                      17, 18, 19, 20, 20,20, 1,1,1,1,     // 0-9DD?¨×????????oè¨??1
+   39                      1, 1, 1, 1,1, 1, 1, 1, 1, 1, 
+   40                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,      // 0-9DD?¨×????????oè¨??1
+   41                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+   42          
+   43          };
+   44          //uint8 Weight[MT9V03X_H] = {
+   45          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   //ÆÕÍ¨Ç°Õ°    //0~0
+   46          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                                    // 10-19ÐÐ£ºÈ¨ÖØ1
+   47          //            8, 9, 10, 13, 13, 13, 5, 5,7,  8, 
+   48          //        9,10,10,11,12,13, 14,15,1, 16,
+   49          //        17, 18, 19, 7, 7,7, 1,1,1,1,     // 0-9ÐÐ£¨×îÔ¶¶Ë£©£ºÈ¨ÖØ1
+   50          //            1, 1, 1, 1,1, 1, 1, 1, 1, 1, 
+   51          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,      // 0-9ÐÐ£¨×îÔ¶¶Ë£©£ºÈ¨ÖØ1
+   52          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+   53          //};
+   54          
+   55          uint8 Weight[MT9V03X_H] = {
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 2   
+
+   56                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   //??í¨?°?°
+   57                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                                    // 10-19DD?oè¨??1
+   58                      1, 1, 1, 1, 1, 10, 10, 10,13,  13, 
+   59                      13,13,10,11,12,13, 14,15,1, 16,
+   60                      17, 20, 20, 20, 20,20, 1,1,1,1,     // 0-9DD?¨×????????oè¨??1
+   61                      1, 1, 1, 1,1, 1, 1, 1, 1, 1, 
+   62                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,      // 0-9DD?¨×????????oè¨??1
+   63                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+   64          };
+   65          //uint8 Weight[MT9V03X_H] = {
+   66          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   //ÆÕÍ¨Ç°Õ°    //0~0
+   67          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                                    // 10-19ÐÐ£ºÈ¨ÖØ1
+   68          //            1, 1,8,11,12,13,14,14,14,15, 
+   69          //            15,16,16,17,17,18,20,20,20, 20,
+   70          //            10, 10, 10, 10, 10, 1, 1, 1, 1, 1,     // 0-9ÐÐ£¨×îÔ¶¶Ë£©£ºÈ¨ÖØ1
+   71          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+   72          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,      // 0-9ÐÐ£¨×îÔ¶¶Ë£©£ºÈ¨ÖØ1
+   73          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+   74          //};
+   75          //uint8 Weight[MT9V03X_H] = {
+   76          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   //ÆÕÍ¨Ç°Õ°    //0~9
+   77          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                 //10-19
+   78          //            9,11,16,18,20,21,22,23,24,25,               //20~29 
+   79          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                //30~39
+   80          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                  //40~49 
+   81          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                  //50~59
+   82          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                 //60~69
+   83          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                 //70~79
+   84          //};
+   85          //uint8 Weight_2[MT9V03X_H] = {
+   86          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,     //×î¿ªÊ¼Ç°Õ°
+   87          //            1, 1, 1, 1, 1, 1, 1, 13, 13, 13,                                    // 10-19ÐÐ£ºÈ¨ÖØ1
+   88          //            10, 13, 17, 13, 10, 13, 11, 13, 14, 14,     // 60-69ÐÐ£ºÈ¨ÖØ1  
+   89          //            16, 17, 18,18,19,19,10,1, 1,1, 
+   90          //            1,1, 1, 1, 1, 1,1, 1,1,1,     // 0-9ÐÐ£¨×îÔ¶¶Ë£©£ºÈ¨ÖØ1
+   91          //            1, 1, 1, 1,1, 1, 1, 1, 1, 1, 
+   92          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,      // 0-9ÐÐ£¨×îÔ¶¶Ë£©£ºÈ¨ÖØ1
+   93          //            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+   94          //};
+   95          
+   96          //±ê×¼Èü¿í£¬½«³µ×Ó·ÅÔÚ³¤Ö±µÀÉÏÃæÊµ²â£¬ÒÔÏÂÊýÖµ½ö¹©²Î¿¼
+   97          uint8 Standard_Road_Wide[MT9V03X_H]=
+   98          {  0,   0, 23, 24, 26, 27, 28, 30, 32, 32,
+   99             34, 36, 37, 39, 40, 42, 43, 45, 46, 48,
+  100             49, 50, 52, 53, 55, 56, 58, 59, 61, 62,
+  101             64, 65, 67, 68, 69, 71, 73, 74, 75, 77,
+  102             79, 79, 81, 83, 85, 85, 87, 89, 91, 92,
+  103             93, 95, 96, 98, 99,101,102,104,105,107,
+  104            108,110,111,113,114,116,117,118,120,122,
+  105            123,124,126,128,129,130,132,133,134,136
+  106          };
+  107          
+  108          //ÏÞ·ùº¯Êý
+  109          int16 clamp(int16 value, int16 min, int16 max) 
+  110            {
+  111   1          if (value < min) 
+  112   1          {
+  113   2              return min;
+  114   2          } 
+  115   1            else if (value > max) 
+  116   1          {
+  117   2              return max;
+  118   2          } 
+  119   1              else 
+  120   1          {
+  121   2              return value;
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 3   
+
+  122   2          }
+  123   1      }
+  124          
+  125          
+  126          //»ñÈ¡²Î¿¼µãÎ»        ãÐÖµ
+  127          void get_reference_point(const uint8 *image)          //ÔÚÍ¼Ïñµ×²¿²ÉÑù 3 ÐÐ£¬ËãÆ½¾ù»Ò¶È   /////////////////////
+             -/////Ðè¸Ä
+  128          {
+  129   1          uint16 i;
+  130   1          // Í¼ÏñÊý×éÖ¸ÕëÖ¸Ïò´ýÍ³¼ÆÐÐ
+  131   1          const uint8 *p = image + (SEARCH_IMAGE_H - REFERENCEROW) * SEARCH_IMAGE_W;
+  132   1          uint16 temp;          // ±£´æ´ýÍ³¼ÆµãÊýÁ¿
+  133   1          uint16 temp2; 
+  134   1          uint32 temp1;         // ±£´æËùÓÐÍ³¼Æµã¼ÓÆðÀ´µÄºÍ
+  135   1          temp1=0;
+  136   1          temp2=0;
+  137   1          temp = REFERENCEROW * SEARCH_IMAGE_W;  // ¼ÆËã´ýÍ³¼Æµã×ÜÊýÁ¿
+  138   1          for(i = 0; i < temp; i +=20)
+  139   1          {
+  140   2              temp1 += *(p + i);    // Í³¼ÆµãÇóºÍ
+  141   2              temp2++;
+  142   2          }
+  143   1          // ¼ÆËãµãÆ½¾ùÖµ£¬×÷Îª±¾·ùÍ¼ÏñµÄ²Î¿¼µã
+  144   1          reference_point = (uint8)(temp1 / temp2);
+  145   1          // ¼ÆËã°×µã×î´óÖµ£º²Î¿¼µã·Å´óºó£¬ÓÃfunc_limit_abÏÞÖÆÔÚ0~BLACKPOINT
+  146   1          white_max_point = clamp((int32)reference_point * WHITEMAXMUL / 10,BLACKPOINT,250); 
+  147   1          // ¼ÆËã°×µã×îÐ¡Öµ£º²Î¿¼µãËõÐ¡ºó£¬ÓÃfunc_limit_abÏÞÖÆÔÚ0~BLACKPOINT
+  148   1          white_min_point = clamp((int32)reference_point * WHITEMINMUL / 10, 0, BLACKPOINT);
+  149   1      //    printf("ref=%d, min=%d, max=%d\n", reference_point, white_min_point, white_max_point);
+  150   1           // ===================== ÐÂÔö´òÓ¡ =====================
+  151   1      //    printf("ref=%d, white_min=%d, white_max=%d\n", reference_point, white_min_point, white_max_point);
+  152   1      }
+  153          
+  154          //void get_reference_point(const uint8 *image)
+  155          //{
+  156          //    uint16 i;
+  157          //    // Í¼ÏñÊý×éÖ¸ÕëÖ¸Ïò´ýÍ³¼ÆÐÐ
+  158          //   const int start_row = SEARCH_IMAGE_H - REFERENCEROW;  // ×îºó REFERENCEROW ÐÐ
+  159          //   const int start_col = (SEARCH_IMAGE_W - REGION_WIDTH) / 2; // ¾ÓÖÐ
+  160          //   const uint8 *p = image + start_row * SEARCH_IMAGE_W + start_col;
+  161          //    uint16 temp  = 0;          // ±£´æ´ýÍ³¼ÆµãÊýÁ¿
+  162          //    uint32 temp1 = 0;         // ±£´æËùÓÐÍ³¼Æµã¼ÓÆðÀ´µÄºÍ
+  163          //    temp = REFERENCEROW * SEARCH_IMAGE_W;  // ¼ÆËã´ýÍ³¼Æµã×ÜÊýÁ¿
+  164          //    for(i = 0; i < temp; i++)
+  165          //    {
+  166          //        temp1 += *(p + i);    // Í³¼ÆµãÇóºÍ
+  167          //    }
+  168          //    // ¼ÆËãµãÆ½¾ùÖµ£¬×÷Îª±¾·ùÍ¼ÏñµÄ²Î¿¼µã
+  169          //    reference_point = (uint8)(temp1 / temp);
+  170          //    // ¼ÆËã°×µã×î´óÖµ£º²Î¿¼µã·Å´óºó£¬ÓÃfunc_limit_abÏÞÖÆÔÚ0~BLACKPOINT
+  171          //    white_max_point = clamp((int32)reference_point * WHITEMAXMUL / 100,BLACKPOINT,255); 
+  172          //    // ¼ÆËã°×µã×îÐ¡Öµ£º²Î¿¼µãËõÐ¡ºó£¬ÓÃfunc_limit_abÏÞÖÆÔÚ0~BLACKPOINT
+  173          //    white_min_point = clamp((int32)reference_point * WHITEMINMUL / 100, 0, BLACKPOINT);
+  174          ////    printf("ref=%d, min=%d, max=%d\n", reference_point, white_min_point, white_max_point);
+  175                 // ===================== ÐÂÔö´òÓ¡ =====================
+  176          //    printf("ref=%d, white_min=%d, white_max=%d\n", reference_point, white_min_point, white_max_point);
+  177          //  }
+  178          
+  179          // ±éÀúÊý×é×î´óÖµ»ò×îÐ¡Öµ
+  180          uint8 find_extreme_value(uint8 *array_value, uint8 num0, uint8 num1, uint8 model)
+  181          {
+  182   1          uint8 i = 0, temp = 0, temp1 = 0, temp2 = 0, value = 0;
+  183   1          uint8 SEARCH_COL_START= 30;  // ÏÈ¶¨Òå
+  184   1          uint8 SEARCH_COL_END = MT9V03X_W - 30;
+  185   1      
+  186   1           if(Right_Island_Flag==1)//ÓÒ»·
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 4   
+
+  187   1          {
+  188   2              if(Island_State==3)
+  189   2              {
+  190   3                  SEARCH_COL_START=70;                        //¸ÄÁË
+  191   3                  SEARCH_COL_END=MT9V03X_W-5;
+  192   3              }
+  193   2          }
+  194   1          else if(Left_Island_Flag==1)//×ó»·
+  195   1          {
+  196   2              if(Island_State==3)
+  197   2              {
+  198   3                  SEARCH_COL_START=5;
+  199   3                  SEARCH_COL_END=MT9V03X_W-70;
+  200   3              }
+  201   2          }
+  202   1      
+  203   1          // ´¦Àí·´Ïò±éÀú£¨num0 > num1£©
+  204   1          if(num0 > num1)
+  205   1          {
+  206   2              temp1 = num0 - num1;
+  207   2              temp2 = num1;
+  208   2              array_value += num0;
+  209   2              value = *array_value;
+  210   2      
+  211   2              // Ñ°ÕÒ×î´óÖµ
+  212   2              if(model)
+  213   2              {
+  214   3                  for(i = 0; i <= temp1; i++)
+  215   3                  {
+  216   4                      current_col = num0 - i; // µ±Ç°±éÀúµÄÁÐË÷Òý
+  217   4                      // Ìø¹ý³¬³ö20~MT9V03X_W-20µÄÁÐ
+  218   4                      if(current_col < SEARCH_COL_START || current_col > SEARCH_COL_END) continue;
+  219   4                      
+  220   4                      temp = *(array_value - i);
+  221   4                      if(temp > value)
+  222   4                      {
+  223   5                          temp2 = current_col;
+  224   5                          value = temp;
+  225   5                      }
+  226   4                  }
+  227   3              }
+  228   2              // Ñ°ÕÒ×îÐ¡Öµ
+  229   2              else
+  230   2              {
+  231   3                  for(i = 0; i <= temp1; i++)
+  232   3                  {
+  233   4                      current_col = num0 - i;
+  234   4                      if(current_col < SEARCH_COL_START || current_col > SEARCH_COL_END) continue;
+  235   4                      
+  236   4                      temp = *(array_value - i);
+  237   4                      if(temp < value)
+  238   4                      {
+  239   5                          temp2 = current_col;
+  240   5                          value = temp;
+  241   5                      }
+  242   4                  }
+  243   3              }
+  244   2          }
+  245   1          // ´¦ÀíÕýÏò±éÀú£¨num0 <= num1£©
+  246   1          else
+  247   1          {
+  248   2              temp1 = num1 - num0;
+  249   2              temp2 = num0;
+  250   2              array_value += num0;
+  251   2              value = *array_value;
+  252   2      
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 5   
+
+  253   2              // Ñ°ÕÒ×î´óÖµ
+  254   2              if(model)
+  255   2              {
+  256   3                  for(i = 0; i <= temp1; i++)
+  257   3                  {
+  258   4                      uint8 current_col = num0 + i;
+  259   4                      if(current_col < SEARCH_COL_START || current_col > SEARCH_COL_END) continue;
+  260   4                      
+  261   4                      temp = *(array_value + i);
+  262   4                      if(temp > value)
+  263   4                      {
+  264   5                          temp2 = current_col;
+  265   5                          value = temp;
+  266   5                      }
+  267   4                  }
+  268   3              }
+  269   2              // Ñ°ÕÒ×îÐ¡Öµ
+  270   2              else
+  271   2              {
+  272   3                  for(i = 0; i <= temp1; i++)
+  273   3                  {
+  274   4                      uint8 current_col = num0 + i;
+  275   4                      if(current_col < SEARCH_COL_START || current_col > SEARCH_COL_END) continue;
+  276   4                      
+  277   4                      temp = *(array_value + i);
+  278   4                      if(temp < value)
+  279   4                      {
+  280   5                          temp2 = current_col;
+  281   5                          value = temp;
+  282   5                      }
+  283   4                  }
+  284   3              }
+  285   2          }
+  286   1      
+  287   1          // ×îÖÕÐ£Ñé£ºÈ·±£·µ»ØÖµÔÚÏÞÖÆ·¶Î§ÄÚ
+  288   1          if(temp2 < SEARCH_COL_START) temp2 = SEARCH_COL_START;
+  289   1          if(temp2 > SEARCH_COL_END)   temp2 = SEARCH_COL_END;
+  290   1      
+  291   1          // ·µ»Ø¼«ÖµËùÔÚµÄË÷ÒýÎ»ÖÃ
+  292   1          return temp2;
+  293   1      }
+  294          
+  295          //ËÑË÷²Î¿¼ÁÐ
+  296          void search_reference_col(const uint8 *image)
+  297          {
+  298   1          int col, row;
+  299   1          int16 temp1 = 0, temp2 = 0, temp3 = 0;
+  300   1          int found;
+  301   1          // ³õÊ¼»¯ËùÓÐÁÐµÄ¼ì²â¾àÀëÎªÍ¼Ïñ×îµ×²¿
+  302   1          for(col = 0; col < SEARCH_IMAGE_W; col++)
+  303   1          {
+  304   2              remote_distance[col] = SEARCH_IMAGE_H - 1;
+  305   2          }
+  306   1        
+  307   1      
+  308   1          // ÖðÁÐ¼ä¸ôÉ¨Ãè£¬²½³¤Îª CONTRASTOFFSET
+  309   1          for(col = 0; col < SEARCH_IMAGE_W; col += CONTRASTOFFSET)         ///////////////////////////////////////
+             -/////////////////
+  310   1          {
+  311   2              found=0;
+  312   2              // ´ÓÍ¼Ïñµ×²¿ÏòÉÏ¼ä¸ôÉ¨Ãè
+  313   2              for(row = SEARCH_IMAGE_H - 1; row >= STOPROW; row -= CONTRASTOFFSET)
+  314   2              {
+  315   3                  // »ñÈ¡µ±Ç°µã»Ò¶ÈÖµ
+  316   3                  temp1 = *(image + row * SEARCH_IMAGE_W + col);
+  317   3                  // »ñÈ¡¶Ô±Èµã»Ò¶ÈÖµ£¨ÉÏ·½ STOPROW ¾àÀë´¦£©
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 6   
+
+  318   3                  temp2 = *(image + (row - STOPROW) * SEARCH_IMAGE_W + col);
+  319   3      
+  320   3                  // ÅÐ¶Ï¶Ô±ÈµãÊÇ·ñÎª°×µã£¬ÈôÊÇÔòÌø¹ýµ±Ç°µã
+  321   3                  if(temp2 > white_max_point)
+  322   3                  {
+  323   4                      continue;
+  324   4                  }
+  325   3      
+  326   3                  // ÅÐ¶Ïµ±Ç°µãÊÇ·ñÎªºÚµã£¬ÈôÊÇÔò¼ÇÂ¼ÐÐ×ø±ê²¢ÍË³öÉ¨Ãè
+  327   3                  if(temp1 < white_min_point)
+  328   3                  {
+  329   4                      remote_distance[col] = row;
+  330   4                      found=1;
+  331   4                      break;
+  332   4                  }
+  333   3      
+  334   3                  // ¼ÆËã¶Ô±È¶È
+  335   3                  temp3 = (temp1 - temp2) * 200 / (temp1 + temp2);
+  336   3      
+  337   3                  // ÅÐ¶Ï¶Ô±È¶ÈÊÇ·ñ´óÓÚãÐÖµ£¬»òÒÑÉ¨Ãèµ½¶¥²¿
+  338   3                  if(temp3 > reference_contrast_ratio || row == STOPROW)
+  339   3                  {
+  340   4                      remote_distance[col] = row;
+  341   4                      found=1;
+  342   4                      break;
+  343   4                  }
+  344   3              }
+  345   2              if(found!=1)
+  346   2                remote_distance[col] = STOPROW;
+  347   2          }
+  348   1      
+  349   1          // ´Ó¼ì²â½á¹ûÖÐÕÒµ½×îÎÈ¶¨µÄ²Î¿¼ÁÐ
+  350   1          reference_col = find_extreme_value(remote_distance, 10, SEARCH_IMAGE_W - 10, 0) ;
+  351   1          // ¶Ô²Î¿¼ÁÐ½øÐÐ±ß½çÏÞÖÆ
+  352   1          reference_col = clamp(reference_col, 1, SEARCH_IMAGE_W - 2);
+  353   1          Search_Stop_Line = SEARCH_IMAGE_H - remote_distance[reference_col];
+  354   1      //    printf("reference_col = %d\n", remote_distance[reference_col]);     // ×îÖÕ³¤¶È
+  355   1      //    printf("Search_Stop_Line = %d\n", Search_Stop_Line);
+  356   1      }
+  357           
+  358          //ËÑË÷ÈüµÀ±ß½ç
+  359          void search_line(const uint8 *image)
+  360          {
+  361   1          uint8 *p = (uint8 *)image[0];             // Í¼ÏñÊý×éÖ¸Õë
+  362   1          uint8 row_max = SEARCH_IMAGE_H - 1;       // ÐÐ×î´óÖµ
+  363   1          uint8 row_min = STOPROW;                  // ÐÐ×îÐ¡Öµ
+  364   1          uint8 col_max = SEARCH_IMAGE_W - CONTRASTOFFSET; // ÁÐ×î´óÖµ
+  365   1          uint8 col_min = CONTRASTOFFSET;           // ÁÐ×îÐ¡Öµ
+  366   1      
+  367   1          int16 leftstartcol = reference_col;       // ËÑÏß×óÆðÊ¼ÁÐ
+  368   1          int16 rightstartcol = reference_col;      // ËÑÏßÓÒÆðÊ¼ÁÐ
+  369   1          int16 leftendcol = 0;                     // ËÑÏß×óÖÕÖ¹ÁÐ
+  370   1          int16 rightendcol = SEARCH_IMAGE_W - 1;   // ËÑÏßÓÒÖÕÖ¹ÁÐ
+  371   1         
+  372   1          int boundry_left_flag=0;
+  373   1          int boundry_right_flag=0;
+  374   1          int lost_left_flag=0;
+  375   1          int lost_right_flag=0;
+  376   1        
+  377   1          uint8 search_time = 0;                    // µ¥µãËÑÏß´ÎÊý
+  378   1          uint8 temp1 = 0, temp2 = 0;               // ÁÙÊ±±äÁ¿£¬ÓÃÓÚ´æ´¢Í¼ÏñÊý¾Ý
+  379   1          int temp3 = 0;                            // ÁÙÊ±±äÁ¿£¬ÓÃÓÚ´æ´¢¶Ô±È¶È
+  380   1          int leftstop = 0, rightstop = 0, stoppoint = 0; // ËÑÏß×ÔËø±äÁ¿
+  381   1      //    int wide;
+  382   1          int col, row;
+  383   1          Left_Lost_Time = 0;          //×ó¶ªÏß
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 7   
+
+  384   1          Right_Lost_Time = 0;         //ÓÒ¶ªÏß
+  385   1          Both_Lost_Time = 0;          //×óÓÒ¶¼¶ªÏß
+  386   1          Boundry_Start_Left = STOPROW;    // ×óÓÐÐ§Æðµã£¬Ä¬ÈÏ×îÔ¶ÐÐ
+  387   1          Boundry_Start_Right = STOPROW;   // ÓÒÓÐÐ§Æðµã£¬Ä¬ÈÏ×îÔ¶ÐÐ
+  388   1          
+  389   1          // ³õÊ¼»¯×óÓÒ±ß½çÏßÎªÍ¼Ïñ±ßÔµ
+  390   1          for(row = row_max; row >= row_min; row--)
+  391   1          {
+  392   2              left_edge_line[row] = col_min - CONTRASTOFFSET;
+  393   2              right_edge_line[row] = col_max + CONTRASTOFFSET;
+  394   2          }
+  395   1      
+  396   1          // ÖðÐÐÉ¨Ãè£¬ËÑË÷×ó±ß½ç
+  397   1          for(row = row_max; row >= row_min; row--)
+  398   1          {
+  399   2              p = (uint8 *)&image[row * SEARCH_IMAGE_W]; // »ñÈ¡±¾ÐÐÆðµãÎ»ÖÃÖ¸Õë
+  400   2              if(!leftstop)
+  401   2              {
+  402   3                  search_time = 2;
+  403   3                  do
+  404   3                  {
+  405   4                      if(search_time == 1)
+  406   4                      {
+  407   5                          leftstartcol = reference_col;
+  408   5                          leftendcol = col_min;
+  409   5                      }
+  410   4                      search_time--;
+  411   4      
+  412   4                      // ´Ó×óÆðÊ¼ÁÐÏò×óÉ¨Ãè
+  413   4                      for(col = leftstartcol; col >= leftendcol; col-=3)      ////////////////////////////////////
+             -//////ÄÚ²ã
+  414   4                      {
+  415   5                          temp1 = *(p + col);                      // »ñÈ¡µ±Ç°µã»Ò¶ÈÖµ
+  416   5                          temp2 = *(p + col - CONTRASTOFFSET);     // »ñÈ¡¶Ô±Èµã»Ò¶ÈÖµ
+  417   5                      
+  418   5      //                    printf("[×ó±ß½ç] row:%d, col:%d | temp1:%d, temp2:%d\r\n", row, col, temp1, temp2);
+  419   5                          // Èç¹û²Î¿¼ÁÐÊÇºÚµã£¬Ôò×ÔËø²¢Çå³ýÎÞÐ§×ó±ß½ç
+  420   5                          if(temp1 < white_min_point && col == leftstartcol && leftstartcol == reference_col)
+  421   5                          {
+  422   6                              leftstop = 1;
+  423   6                              for(stoppoint = row; stoppoint >= 0; stoppoint--)
+  424   6                              {
+  425   7                                  left_edge_line[stoppoint] = col_min;
+  426   7                              }
+  427   6                              search_time = 0;
+  428   6                              break;
+  429   6                          }
+  430   5      
+  431   5                          // Èç¹ûµ±Ç°µãÊÇºÚµã£¬Ö±½Ó¼ÇÂ¼Îª×ó±ß½ç
+  432   5                          if(temp1 < white_min_point)
+  433   5                          {
+  434   6                              left_edge_line[row] = (uint8)col;
+  435   6                              break;
+  436   6                          }
+  437   5      
+  438   5                          // Èç¹û¶Ô±ÈµãÊÇ°×µã£¬Ìø¹ýµ±Ç°µã
+  439   5                          if(temp2 > white_max_point)
+  440   5                          {
+  441   6                              continue;
+  442   6                          }
+  443   5      
+  444   5                          // ¼ÆËã¶Ô±È¶È
+  445   5                          temp3 = (temp1 - temp2) * 200 / (temp1 + temp2);
+  446   5      
+  447   5                          // Èç¹û¶Ô±È¶È´óÓÚãÐÖµ»òÒÑµ½ÁÐ±ßÔµ£¬¼ÇÂ¼×ó±ß½ç
+  448   5                          if(temp3 > reference_contrast_ratio || col == col_min-2)
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 8   
+
+  449   5                          {
+  450   6                              left_edge_line[row] = col;
+  451   6                              // ¸üÐÂÏÂÒ»´ÎËÑÏßµÄ·¶Î§
+  452   6                              leftstartcol = clamp(col + SEARCHRANGE, col, col_max);
+  453   6                              leftendcol = clamp(col - SEARCHRANGE, col_min, col);
+  454   6                              search_time = 0;
+  455   6                              break;
+  456   6                          }
+  457   5                      }
+  458   4                  }while(search_time);
+  459   3              }
+  460   2      
+  461   2              // ÖðÐÐÉ¨Ãè£¬ËÑË÷ÓÒ±ß½ç
+  462   2              if(!rightstop)
+  463   2              {
+  464   3                  search_time = 2;
+  465   3                  do
+  466   3                  {
+  467   4                      if(search_time == 1)
+  468   4                      {
+  469   5                          rightstartcol = reference_col;
+  470   5                          rightendcol = col_max;
+  471   5                      }
+  472   4                      search_time--;
+  473   4      
+  474   4                      // ´ÓÓÒÆðÊ¼ÁÐÏòÓÒÉ¨Ãè
+  475   4                      for(col = rightstartcol; col <= rightendcol; col+=3)
+  476   4                      {
+  477   5                          temp1 = *(p + col);                      // »ñÈ¡µ±Ç°µã»Ò¶ÈÖµ
+  478   5                          temp2 = *(p + col + CONTRASTOFFSET);     // »ñÈ¡¶Ô±Èµã»Ò¶ÈÖµ
+  479   5      
+  480   5      //                    printf("[ÓÒ±ß½ç] row:%d, col:%d | temp1:%d, temp2:%d\r\n", row, col, temp1, temp2);
+  481   5                          // Èç¹û²Î¿¼ÁÐÊÇºÚµã£¬Ôò×ÔËø²¢Çå³ýÎÞÐ§ÓÒ±ß½ç
+  482   5                          if(temp1 < white_min_point && col == reference_col && rightstartcol == reference_col)
+  483   5                          {
+  484   6                              rightstop = 1;
+  485   6                              for(stoppoint = row; stoppoint >= 0; stoppoint--)
+  486   6                              {
+  487   7                                  right_edge_line[stoppoint] = col_max;
+  488   7                              }
+  489   6                              search_time = 0;
+  490   6                              break;
+  491   6                          }
+  492   5      
+  493   5                          // Èç¹ûµ±Ç°µãÊÇºÚµã£¬Ö±½Ó¼ÇÂ¼ÎªÓÒ±ß½ç
+  494   5                          if(temp1 < white_min_point)
+  495   5                           { 
+  496   6                           right_edge_line[row] = (uint8)col;
+  497   6                               break;
+  498   6                           }
+  499   5                           // Èç¹û¶Ô±ÈµãÊÇ°×µã£¬Ìø¹ýµ±Ç°µã
+  500   5                           if(temp2 > white_max_point)
+  501   5                           {
+  502   6                               continue;
+  503   6                           }
+  504   5                           // ¼ÆËã¶Ô±È¶È
+  505   5                           temp3 = (temp1 - temp2) * 200 / (temp1 + temp2);
+  506   5                           // Èç¹û¶Ô±È¶È´óÓÚãÐÖµ»òÒÑµ½ÁÐ±ßÔµ£¬¼ÇÂ¼ÓÒ±ß½ç
+  507   5                           if(temp3 > reference_contrast_ratio || col == col_max+2)
+  508   5                           {
+  509   6                               right_edge_line[row] = col;
+  510   6                               // ¸üÐÂÏÂÒ»´ÎËÑÏßµÄ·¶Î§
+  511   6                               rightstartcol = clamp(col - SEARCHRANGE, col_min, col);
+  512   6                               rightendcol = clamp(col + SEARCHRANGE, col, col_max);
+  513   6                               search_time = 0;
+  514   6                               break;
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 9   
+
+  515   6                           }
+  516   5                       }
+  517   4                   }while(search_time);
+  518   3               }
+  519   2           }
+  520   1          
+  521   1      //     for(row = row_max; row >= row_min; row--)
+  522   1      //{
+  523   1      //    //Í³¼Æ¶ªÏß
+  524   1      //    if(left_edge_line[row] <= 0)
+  525   1      
+  526   1      //        Left_Lost_Time++;
+  527   1      
+  528   1      //    if(right_edge_line[row] >= 180)
+  529   1      //        Right_Lost_Time++;
+  530   1      
+  531   1      //    if(left_edge_line[row] <= 0 && right_edge_line[row] >= 180)
+  532   1      //        Both_Lost_Time++;
+  533   1      //}
+  534   1      //        for(row = row_max; row >= row_min; row--)
+  535   1      //    {
+  536   1      //        // ×ó¶ªÏß£º»¹ÊÇÄ¬ÈÏÖµ
+  537   1      //        if(left_edge_line[row] <= 0)
+  538   1      //            Left_Lost_Time++;
+  539   1      
+  540   1      //        // ÓÒ¶ªÏß
+  541   1      //        if(right_edge_line[row] >= 180)
+  542   1      //            Right_Lost_Time++;
+  543   1      
+  544   1      //        // Ë«±ß¶ªÏß
+  545   1      //        if( left_edge_line[row]<= 0 &&
+  546   1      //            right_edge_line[row] >= 180)
+  547   1      //            Both_Lost_Time++;
+  548   1      //    }
+  549   1      for(row = row_max-2; row >= row_min; row--)
+  550   1      {
+  551   2          //Í³¼Æ¶ªÏß
+  552   2          if(left_edge_line[row] <= 0)
+  553   2              Left_Lost_Time++;
+  554   2      //          printf("L=%d\r\n",row);
+  555   2          if(right_edge_line[row] >= 180)
+  556   2              Right_Lost_Time++;
+  557   2      //          printf("R=%d\r\n",row);
+  558   2          if(left_edge_line[row] <= 0 && right_edge_line[row] >= 180)
+  559   2              Both_Lost_Time++;
+  560   2          // ÕÒ×óÆðµã
+  561   2          if(Boundry_Start_Left == STOPROW && left_edge_line[row] > 0)
+  562   2          {
+  563   3              Boundry_Start_Left = row;
+  564   3          }
+  565   2          // ÕÒÓÒÆðµã
+  566   2          if(Boundry_Start_Right == STOPROW && right_edge_line[row] < 180)
+  567   2          {
+  568   3              Boundry_Start_Right = row;
+  569   3          }
+  570   2      }
+  571   1      //  printf("Left_Lost_Time=%d, Right_Lost_Time=%d, Both_Lost_Time=%d\r\n", 
+  572   1      //       Left_Lost_Time, Right_Lost_Time, Both_Lost_Time);
+  573   1      //printf("Boundry_Start_Left=%d, Boundry_Start_Right=%d\r\n", 
+  574   1      //       Boundry_Start_Left, Boundry_Start_Right);
+  575   1      // if(row <= row_max - 2)   // ´Ó row_max-2 ÐÐ¿ªÊ¼Í³¼Æ£¨ÓëÔ­¶ÀÁ¢Ñ­»·Ò»ÖÂ£©
+  576   1      //        {
+  577   1      //            // Í³¼Æ¶ªÏß
+  578   1      //            if(left_edge_line[row] <= 0)
+  579   1      //                Left_Lost_Time++;
+  580   1      //            if(right_edge_line[row] >= 180)
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 10  
+
+  581   1      //                Right_Lost_Time++;
+  582   1      //            if(left_edge_line[row] <= 0 && right_edge_line[row] >= 180)
+  583   1      //                Both_Lost_Time++;
+  584   1      
+  585   1      //            // ÕÒ×óÓÐÐ§Æðµã£¨´ÓÔ¶µ½½üÓöµ½µÄµÚÒ»¸öÓÐÐ§×ó±ß½ç£©
+  586   1      //            if(Boundry_Start_Left == STOPROW && left_edge_line[row] > 0)
+  587   1      //            {
+  588   1      //                Boundry_Start_Left = row;
+  589   1      //            }
+  590   1      //            // ÕÒÓÒÓÐÐ§Æðµã
+  591   1      //            if(Boundry_Start_Right == STOPROW && right_edge_line[row] < 180)
+  592   1      //            {
+  593   1      //                Boundry_Start_Right = row;
+  594   1      //            }
+  595   1      //        }
+  596   1      //        printf("Left_Lost_Time=%d, Right_Lost_Time=%d, Both_Lost_Time=%d\r\n", 
+  597   1      //       Left_Lost_Time, Right_Lost_Time, Both_Lost_Time);
+  598   1      //printf("Boundry_Start_Left=%d, Boundry_Start_Right=%d\r\n", 
+  599   1      //       Boundry_Start_Left, Boundry_Start_Right);
+  600   1      //    }
+  601   1          // º¯Êý½áÊø£¬ËùÓÐÍ³¼Æ½á¹ûÒÑ¾­±£´æÔÚÈ«¾Ö±äÁ¿ÖÐ
+  602   1      //}
+  603   1      //    for(row = row_max-2; row >= row_min; row--)
+  604   1      //{
+  605   1      //    // ÕÒ×óÓÐÐ§Æðµã
+  606   1      //    if(left_edge_line[row] >0)
+  607   1      //    {
+  608   1      //        Boundry_Start_Left = row;
+  609   1      //        break;
+  610   1      //    }
+  611   1      //     // ÕÒÓÒÓÐÐ§Æðµã
+  612   1      //    if(right_edge_line[row]>=180)
+  613   1      //    {
+  614   1      //        Boundry_Start_Right = row;
+  615   1      //      
+  616   1      //        break;
+  617   1      //    }
+  618   1      //     // Á½¸ö¶¼ÕÒµ½ÁË£¬Ö±½ÓÌáÇ°ÍË³öÑ­»·£¨×îÓÅÐ§ÂÊ£©
+  619   1      //    if(Boundry_Start_Left != 0 && Boundry_Start_Right != 0)
+  620   1      //    {
+  621   1      //        break;
+  622   1      //    }
+  623   1      //    
+  624   1      //}
+  625   1      
+  626   1      //for(row = row_max-2; row >= row_min; row--)                   //¸ÄÁËµÄ
+  627   1      //{
+  628   1      //    // ÕÒÓÒÓÐÐ§Æðµã
+  629   1      //    if(right_edge_line[row] <180)
+  630   1      //    {
+  631   1      //        Boundry_Start_Right = row;
+  632   1      //      
+  633   1      //        break;
+  634   1      //    }
+  635   1      //}
+  636   1      // ¼ÆËãÃ¿ÐÐÊµ¼ÊÈüµÀ¿í¶È Road_Wide
+  637   1      //for( i = 0; i < MT9V03X_H; i++)                              //¸ÄÁËµÄ
+  638   1      //{
+  639   1      //    Road_Wide[i] = right_edge_line[i] - left_edge_line[i];
+  640   1      
+  641   1      //    // ÏÞ·ù£¬·ÀÖ¹Òì³£Öµ
+  642   1      //    if(Road_Wide[i] < 0) Road_Wide[i] = 0;
+  643   1      //    if(Road_Wide[i] > MT9V03X_W) Road_Wide[i] = MT9V03X_W;
+  644   1      //}
+  645   1        }
+  646          //Îó²îÇóÈ¡
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 11  
+
+  647          void error_calcul()
+  648          {
+  649   1          
+  650   1          int i;
+  651   1          int32 weight_count = 0;
+  652   1          int16 left,right,row_error,track_center,img_center;
+  653   1      //    Img_error = 0;
+  654   1          int32 Img_error_1=0;
+  655   1      //    const int16 *weight_table = (Island_State == 4) ? Weight_1 : Weight;
+  656   1          Img_error_last=Img_error;
+  657   1           // Í¼ÏñÖÐÏß£¨ÓÐ·ûºÅ£¬·¶Î§0~127£©
+  658   1            img_center = MT9V03X_W / 2;
+  659   1          
+  660   1          for(i = MT9V03X_H - 1; i >= remote_distance[reference_col] - 1; i--)//MT9V03X_H - Search_Stop_Line
+  661   1          {
+  662   2              // ÑÏ¸ñ·ÀÖ¹Êý×éÔ½½ç£¨80ÐÐµÄi·¶Î§£º0~79£©
+  663   2              if(i < 0 || i >= MT9V03X_H) {
+  664   3                  continue;
+  665   3              }
+  666   2      
+  667   2              // Ç¿ÖÆ×ªÎªÓÐ·ûºÅÀàÐÍ£¬±ÜÃâÎÞ·ûºÅÒç³ö
+  668   2              
+  669   2              left = (int16)left_edge_line[i];
+  670   2              right = (int16)right_edge_line[i];
+  671   2              
+  672   2              // ¼ÆËãÊµ¼ÊÖÐÏß
+  673   2              // ×óµºÓÅÏÈ
+  674   2      if(Left_Island_Flag == 1)
+  675   2      {
+  676   3          switch(Island_State)
+  677   3          {
+  678   4              case 1:
+  679   4              case 2:
+  680   4      //        case 7:
+  681   4              case 8:
+  682   4                  track_center = right - 45;
+  683   4                  break;
+  684   4              
+  685   4      //        case 3:
+  686   4              case 6:
+  687   4      //            if(h == 1) 
+  688   4                  track_center = left + 45;
+  689   4                  break;
+  690   4              
+  691   4              default:
+  692   4                  track_center = (left + right) >> 1;
+  693   4                  break;
+  694   4          }
+  695   3      }
+  696   2      // ÓÒµºÓÅÏÈ
+  697   2      else if(Right_Island_Flag == 1)
+  698   2      {
+  699   3          switch(Island_State)
+  700   3          {
+  701   4              case 1:
+  702   4              case 2:
+  703   4      //        case 7:
+  704   4              case 8:
+  705   4                  track_center = left + 45;
+  706   4                  break;
+  707   4      
+  708   4      //        case 3:
+  709   4              case 6
+  710   4                  :
+  711   4      //            if(h == 13) 
+  712   4                  track_center = right - 45;
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 12  
+
+  713   4                  break;
+  714   4      
+  715   4              default:
+  716   4                  track_center = (left + right) >> 1;
+  717   4                  break;
+  718   4          }
+  719   3      }
+  720   2      // Õý³£Çé¿ö
+  721   2      else
+  722   2      {
+  723   3          track_center = (left + right) >> 1;
+  724   3      }
+  725   2              //ÐÞÕýÆ«²î·½Ïò£¬ËõÐ¡ÊýÖµ·¶Î§£¨Êµ¼ÊÖÐÏß - Í¼ÏñÖÐÏß£©
+  726   2              row_error = track_center - img_center;
+  727   2              // ¼ÓÈ¨ÀÛ¼Ó£¨×ªÎªfloat£¬±ÜÃâÕûÊýÒç³ö£©
+  728   2            if(Island_State==4){
+  729   3          Img_error_1 += (float)row_error * Weight_1[i];
+  730   3              // ÀÛ¼ÓÈ¨ÖØ
+  731   3              weight_count += Weight_1[i];
+  732   3      //         }else if(start_flag==1){
+  733   3      //            Img_error_1 += (float)row_error * Weight_2[i];
+  734   3      //        // ÀÛ¼ÓÈ¨ÖØ
+  735   3      //        weight_count += Weight_2[i];
+  736   3               }else{
+  737   3              Img_error_1 += (float)row_error * Weight[i];
+  738   3              // ÀÛ¼ÓÈ¨ÖØ
+  739   3              weight_count += Weight[i];
+  740   3               }
+  741   2          }
+  742   1            // ¼ÓÈ¨Æ½¾ùÆ«²î
+  743   1          Img_error = Img_error_1 / weight_count;
+  744   1          if((Island_State==4||Island_State==3||Island_State==5||Island_State==6)&&Left_Island_Flag==1&&Img_error
+             ->-40)
+  745   1          {
+  746   2            if(Img_error_last>-40)
+  747   2            {
+  748   3              Img_error=-40;
+  749   3            }else{
+  750   3              Img_error=Img_error_last;
+  751   3            }
+  752   2          }else if((Island_State==4||Island_State==3||Island_State==5||Island_State==6)&&Right_Island_Flag==1&&Im
+             -g_error<40)
+  753   1          {
+  754   2            if(Img_error_last<40)
+  755   2            {
+  756   3            Img_error=40;
+  757   3            }else{
+  758   3              Img_error=Img_error_last;
+  759   3            }
+  760   2          }
+  761   1      //    if((Island_State==4||Island_State==3||Island_State==5||Island_State==6)&&abs(Img_error)<40)
+  762   1      //    if(Img_error_last<40)
+  763   1      //      {
+  764   1      //      Img_error=40;
+  765   1      //           }else{
+  766   1      //        Img_error=Img_error_last;    
+  767   1      //   }
+  768   1       }
+  769          //void UART_Print_Full_Image_Gray(void)
+  770          //{
+  771          //    uint16 row;
+  772          //    uint16 col;
+  773          //    printf("\r\n========== Õû·ùÍ¼Ïñ»Ò¶ÈÖµ ==========\r\n");
+  774          //    for(row = 0; row < MT9V03X_H; row++)
+  775          //    {
+  776          //        printf("ÐÐ%3d: ", row);
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 13  
+
+  777          //        for(col = 0; col < MT9V03X_W; col++)
+  778          //        {
+  779          //            printf("%3d ", mt9v03x_image[row][col]);
+  780          //            // Ã¿´òÓ¡10ÁÐ»»ÐÐ£¨±ÜÃâµ¥ÐÐ×Ö·û¹ý³¤£©
+  781          //            if((col + 1) % 10 == 0) printf("\r\n      ");
+  782          //        }
+  783          //        printf("\r\n");
+  784          //    }
+  785          //    printf("=====================================\r\n");
+  786          //}
+  787          
+  788          //void Test_Road_Wide(void)
+  789          //{
+  790          //    int i;
+  791          //    printf("\n==================== ÖðÐÐÈüµÀ¿í¶È²âÊÔ ====================\n");
+  792          //    
+  793          //    // ÖðÐÐ´òÓ¡ 0 ~ MT9V03X_H-1 È«²¿ÐÐ
+  794          //    for(i = 0; i < MT9V03X_H; i++)
+  795          //    {
+  796          //           printf("ÐÐ[%02d]  Êµ¼Ê¿í¶È=%3d\n",
+  797          //               i,
+  798          //               Road_Wide[i]);
+  799          //    }
+  800          //    
+  801          //    printf("==========================================================\n\n");
+  802          //}
+  803          
+  804          
+  805          void Image_Pro_1(void){
+  806   1        //²Î¿¼µã
+  807   1        get_reference_point((const uint8 *)&mt9v03x_image[0][0]); //  ¿´Í¼Ïñ¶¥²¿¼¸ÐÐ£¬Ëã³ö¡°°×É«ÓÐ¶à°×¡¢ºÚÉ«ÓÐ¶àº
+             -Ú¡±
+  808   1      //²Î¿¼ÁÐ
+  809   1        search_reference_col((const uint8 *)&mt9v03x_image[0][0]);  //´Óµ×²¿ÍùÉÏÉ¨£¬ÕÒ¡°ÄÜ¿´µÃ×îÔ¶µÄÒ»ÁÐ¡±
+  810   1      //ËÑË÷±ß½ç
+  811   1        search_line((const uint8 *)&mt9v03x_image[0][0]);         //´Ó reference_col ³ö·¢£¬×óÓÒ¸÷É¨³öÒ»ÌõÈüµÀ±ßÏß
+  812   1      //  Test_Road_Wide();
+  813   1      //°Ð×Ó¼ì²â
+  814   1      //  detect_bullseye((const uint8 *)&mt9v03x_image[0][0]);
+  815   1      
+  816   1      }
+  817          void Image_Pro(void)      
+  818          {
+  819   1        Image_Pro_1();
+  820   1       //===================== »·µºÈ«Ì×µ÷ÊÔÉÏÎ»»ú´òÓ¡ =====================
+  821   1      //printf("[»·µºµ÷ÊÔ] State=%d | L=%d R=%d | L_Start=%d R_Start=%d\r\n",
+  822   1      //       Island_State,
+  823   1      //       Left_Island_Flag,
+  824   1      //       Right_Island_Flag,
+  825   1      //       Boundry_Start_Left,
+  826   1      //       Boundry_Start_Right);
+  827   1      
+  828   1      //printf("[¶ªÏßÍ³¼Æ] L_Lost=%d R_Lost=%d BothLost=%d | ImgErr=%d | SearchLine=%d\r\n",
+  829   1      //       Left_Lost_Time,
+  830   1      //       Right_Lost_Time,
+  831   1      //       Both_Lost_Time,
+  832   1      //       Img_error,
+  833   1      //       Search_Stop_Line);
+  834   1      
+  835   1      
+  836   1      //printf("--------------------------------------------------------\r\n");
+  837   1      
+  838   1        //°ßÂíÏßÊ¶±ð
+  839   1      //   Zebra_idntify();
+  840   1      //  printf(" ZebraState=%d\n",Zebra_State);
+  841   1      //  //°Ð×Ó¼ì²â
+C251 COMPILER V5.60.0,  image                                                              10/11/26  15:54:04  PAGE 14  
+
+  842   1        detect_bullseye((const uint8 *)&mt9v03x_image[0][0]);
+  843   1      //  Ô²»·×´Ì¬»ú
+  844   1         Island_Detect();
+  845   1      //  //Ö±µÀ¼ì²â
+  846   1      //   Straight_Detect();
+  847   1        //Îó²îÇóÈ¡
+  848   1         error_calcul();        //ÓÃ×óÓÒ±ßÏßËã¡°ÈüµÀÖÐÐÄÔÚÄÄ¡¢³µÆ«ÁË¶àÉÙ¡±
+  849   1      
+  850   1      }
+*** WARNING C183 IN LINE 137 OF ..\code\image.c: dead assignment eliminated
+*** WARNING C183 IN LINE 299 OF ..\code\image.c: dead assignment eliminated
+*** WARNING C183 IN LINE 658 OF ..\code\image.c: dead assignment eliminated
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =    ------     ------
+  ecode size           =      2818     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =      1020         31
+  xdata-const size     =    ------     ------
+  edata size           =    ------     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =      1155     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  3 WARNING(S),  0 ERROR(S)

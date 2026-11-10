@@ -1,0 +1,134 @@
+C251 COMPILER V5.60.0,  straight                                                           10/11/26  15:54:04  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE straight
+OBJECT MODULE PLACED IN .\out_file\straight.obj
+COMPILER INVOKED BY: D:\ruanjian\51\C251\BIN\C251.EXE ..\code\straight.c LARGE FLOAT64 ROM(HUGE) WARNINGLEVEL(3) OPTIMIZ
+                    -E(SIZE) BROWSE INCDIR(..\..\libraries\zf_common;..\..\libraries\zf_components;..\..\libraries\zf_device;..\..\libraries\
+                    -zf_driver;..\user;..\code;..\..\libraries\zf_components\stc32g_usb_lib;..\..\libraries\zf_components\seekfree_assistant)
+                    - DEBUG PRINT(.\out_file\straight.lst) TABS(2) OBJECT(.\out_file\straight.obj) 
+
+stmt  level    source
+
+    1          #include "straight.h"
+    2          
+    3          static uint8 Straight_Cnt = 0;  
+    4          int Straight_Flag=0;
+    5          
+    6          // 获取左赛道边界斜率
+    7          float Get_Left_K(int start_line,int end_line)
+    8          {
+    9   1          float k=0;
+   10   1          int t=0;
+   11   1          if(start_line>=MT9V03X_H-1)
+   12   1              start_line=MT9V03X_H-1;
+   13   1          else if(start_line<=0)
+   14   1              start_line=0;
+   15   1          if(end_line>=MT9V03X_H-1)
+   16   1              end_line=MT9V03X_H-1;
+   17   1          else if(end_line<=0)
+   18   1              end_line=0;
+   19   1          if(start_line>end_line)//++访问，坐标反了互换
+   20   1          {
+   21   2              t=start_line;
+   22   2              start_line=end_line;
+   23   2              end_line=t;
+   24   2          }
+   25   1          k=(float)(((float)left_edge_line[start_line]-(float)left_edge_line[end_line])/(end_line-start_line+1)
+             -);
+   26   1          return k;
+   27   1      }
+   28          
+   29          
+   30          // 获取右赛道边界斜率
+   31          float Get_Right_K(int start_line,int end_line)
+   32          {
+   33   1          float k=0;
+   34   1          int t=0;
+   35   1          if(start_line>=MT9V03X_H-1)
+   36   1              start_line=MT9V03X_H-1;
+   37   1          else if(start_line<=0)
+   38   1              start_line=0;
+   39   1          if(end_line>=MT9V03X_H-1)
+   40   1              end_line=MT9V03X_H-1;
+   41   1          else if(end_line<=0)
+   42   1              end_line=0;
+   43   1          if(start_line>end_line)//++访问，坐标反了互换
+   44   1          {
+   45   2              t=start_line;
+   46   2              start_line=end_line;
+   47   2              end_line=t;
+   48   2          }
+   49   1          k=(float)(((float)right_edge_line[start_line]-(float)right_edge_line[end_line])/(end_line-start_line+
+             -1));
+   50   1          return k;
+   51   1      }
+   52          
+   53          void Straight_Detect(void)
+   54          {
+C251 COMPILER V5.60.0,  straight                                                           10/11/26  15:54:04  PAGE 2   
+
+   55   1        float k_left,k_right;
+   56   1        float abs_sum;
+   57   1        Straight_Flag=0;
+   58   1        k_left=Get_Left_K(3,MT9V03X_H-3);
+   59   1        k_right=Get_Right_K(3,MT9V03X_H-3);
+   60   1        abs_sum = fabs(k_left + k_right);
+   61   1      //  printf(" k_left:%.2f\r\n",k_left);
+   62   1      //  printf(" k_right:%.2f\r\n",k_right);
+   63   1      //  printf("L3=%d  L_end=%d    ", left_edge_line[3], left_edge_line[MT9V03X_H-3]);
+   64   1      //  printf("R3=%d  R_end=%d\r\n", right_edge_line[3], right_edge_line[MT9V03X_H-3]);
+   65   1        if(bullseye_flag==0&&Island_State==0)
+   66   1        {
+   67   2        if(abs_sum < 0.2&&abs(Img_error) < 10&&k_left>0&&k_right<0)  // ?? 直行：数值小
+   68   2        {
+   69   3          if(Straight_Cnt < STRAIGHT_COUNT_MAX)
+   70   3            Straight_Cnt++;
+   71   3        }
+   72   2        else  // ?? 不直：数值大
+   73   2        {
+   74   3          if(Straight_Cnt > 0)
+   75   3            Straight_Cnt--;
+   76   3        }
+   77   2      
+   78   2        // 输出
+   79   2        Straight_Flag = (Straight_Cnt >= STRAIGHT_COUNT_MAX) ? 1 : 0;
+   80   2      //  if(Straight_Flag == 1)
+   81   2      //  {
+   82   2      //    Beep=1;
+   83   2      //  }else{
+   84   2      //    Beep=0;
+   85   2      //  }
+   86   2        }
+   87   1      }
+   88          
+   89          
+   90          
+*** WARNING C183 IN LINE 9 OF ..\code\straight.c: dead assignment eliminated
+*** WARNING C183 IN LINE 10 OF ..\code\straight.c: dead assignment eliminated
+*** WARNING C183 IN LINE 33 OF ..\code\straight.c: dead assignment eliminated
+*** WARNING C183 IN LINE 34 OF ..\code\straight.c: dead assignment eliminated
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =    ------     ------
+  ecode size           =       477     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =         3          4
+  xdata-const size     =    ------     ------
+  edata size           =    ------     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =        13     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  4 WARNING(S),  0 ERROR(S)

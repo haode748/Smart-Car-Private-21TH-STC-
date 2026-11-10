@@ -1,0 +1,291 @@
+C251 COMPILER V5.60.0,  car_control                                                        10/11/26  15:54:03  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE car_control
+OBJECT MODULE PLACED IN .\out_file\car_control.obj
+COMPILER INVOKED BY: D:\ruanjian\51\C251\BIN\C251.EXE ..\code\car_control.c LARGE FLOAT64 ROM(HUGE) WARNINGLEVEL(3) OPTI
+                    -MIZE(SIZE) BROWSE INCDIR(..\..\libraries\zf_common;..\..\libraries\zf_components;..\..\libraries\zf_device;..\..\librari
+                    -es\zf_driver;..\user;..\code;..\..\libraries\zf_components\stc32g_usb_lib;..\..\libraries\zf_components\seekfree_assista
+                    -nt) DEBUG PRINT(.\out_file\car_control.lst) TABS(2) OBJECT(.\out_file\car_control.obj) 
+
+stmt  level    source
+
+    1          //×é    ±ð£ºÑã¹ýÁôºÛ
+    2          //¶Ó    Ãû£ºCWNU-Ì½ºÛÆôº½¶Ó
+    3          //×÷    Õß£ºÇ®¾µ»Û
+    4          //´´½¨Ê±¼ä£º2025-11-24
+    5          // Car_Control.c
+    6          // Car_Control.c
+    7          #include "Car_Control.h"
+    8          
+    9          // ------------------ ¶æ»úÕ¼¿Õ±È¼ÆËã·½Ê½ ------------------
+   10          int32 Speed_L = 0;
+   11          int32 Speed_R = 0;
+   12          int32 PWM_L_set = 0;
+   13          int32 PWM_R_set = 0;
+   14          RS_Direct dir_l_state = Go;
+   15          RS_Direct dir_r_state = Go;
+   16          float groyz =0;
+   17          float FJ_Angle = 0;
+   18          float FJ_Pitch = 0;
+   19          float FJ_AngleSpeed = 0;
+   20          float FJ_PitchSpeed = 0;
+   21          float FJ_LastAngleSpeed = 0;
+   22          float gyro_offset_z=0;
+   23          // ÁãÆ«
+   24          int ZeroDrift_gyro_y = 0;
+   25          int ZeroDrift_gyro_z = 0;
+   26          // ±àÂëÆ÷
+   27          int32 encoder_data_dir_1 = 0;
+   28          int32 encoder_data_dir_2 = 0;
+   29          int16 ticker_count = 0;
+   30          
+   31          // ¶æ»ú
+   32          uint16 Median_servo = 89;
+   33          uint16 Servo_duty = 0;
+   34          
+   35          // ³µÁ¾ÐÐ½øÄ£Ê½
+   36          //RS_CarMode Car_Mode = Lock;
+   37          RS_CarMode Car_Mode =Run ;
+   38          void Car_inital(void)
+   39          {
+   40   1          gpio_init(Dir_L, GPO, GPIO_HIGH, GPO_PUSH_PULL);  // GPIO ³õÊ¼»¯ÎªÊä³ö Ä¬ÈÏÉÏÀ­Êä³ö¸ß
+   41   1          gpio_init(Dir_R, GPO, GPIO_HIGH, GPO_PUSH_PULL);  // GPIO ³õÊ¼»¯ÎªÊä³ö Ä¬ÈÏÉÏÀ­Êä³ö¸ß
+   42   1          pwm_init(PWM_L, 17000, 0);                       // PWM Í¨µÀ³õÊ¼»¯ÆµÂÊ 17KHz Õ¼¿Õ±È³õÊ¼Îª 0
+   43   1          pwm_init(PWM_R, 17000, 0);                       // PWM Í¨µÀ³õÊ¼»¯ÆµÂÊ 17KHz Õ¼¿Õ±È³õÊ¼Îª 0
+   44   1      
+   45   1      // ±àÂëÆ÷³õÊ¼»¯
+   46   1          encoder_dir_init(ENCODER_L,ENCODER_L_PULSE_PIN, ENCODER_L_DIR_PIN);   // ³õÊ¼»¯×ó±àÂëÆ÷
+   47   1          encoder_dir_init(ENCODER_R,ENCODER_R_PULSE_PIN, ENCODER_R_DIR_PIN);   // ³õÊ¼»¯ÓÒ±àÂëÆ÷
+   48   1      // ¶æ»ú³õÊ¼»¯  
+   49   1          pwm_init(SERVO_PWM, SERVO_FREQ, Median_servo);  
+   50   1          pwm_set_duty(SERVO_PWM, (uint32)SERVO_DUTY(89));
+   51   1      //×ËÌ¬´«¸ÐÆ÷  IMU
+   52   1          imu660rb_init();                                 
+   53   1          gyro_get();         // ÏÈ¶ÁÒ»´Î
+   54   1          gyro_calibrate_z();   // ¿ª»úÐ£×¼ZÖá
+   55   1        
+   56   1        
+C251 COMPILER V5.60.0,  car_control                                                        10/11/26  15:54:03  PAGE 2   
+
+   57   1        //ÎÞÏß´®¿Ú³õÊ¼»¯
+   58   1       wireless_uart_init();
+   59   1      
+   60   1      
+   61   1        //wushuadainji_init
+   62   1      //    gpio_init(IO_PA1,GPO,0,GPO_PUSH_PULL);
+   63   1      //    gpio_init(IO_PA3,GPO,0,GPO_PUSH_PULL);
+   64   1        pwm_init(PWMF_CH1_PA1, 50, 0); 
+   65   1          pwm_init(PWMF_CH2_PA3, 50, 0);
+   66   1      
+   67   1      //  //RGB³õÊ¼»¯  ÓÃÓÚÖ¸Ê¾³µÁ¾Ñ²Ïß×´Ì¬
+   68   1        //·äÃùÆ÷³õÊ¼»¯
+   69   1        gpio_init(IO_P45, GPO, GPIO_HIGH, GPO_PUSH_PULL);   // P32Òý½ÅÉèÖÃÎªÍÆÍìÊä³ö  Òý½ÅÒª¸Ä   
+   70   1        Beep=0;//·äÃùÆ÷¹Ø
+   71   1        
+   72   1      //  gpio_init(IO_P64, GPO, GPIO_HIGH, GPO_PUSH_PULL);
+   73   1      
+   74   1        gpio_init(IO_P11, GPO, GPIO_HIGH, GPO_PUSH_PULL);
+   75   1          gpio_init(IO_P67, GPO, GPIO_HIGH, GPO_PUSH_PULL);
+   76   1        gpio_init(IO_P53, GPO, GPIO_HIGH, GPO_PUSH_PULL);
+   77   1        gpio_init(IO_P50, GPO, GPIO_HIGH, GPO_PUSH_PULL);
+   78   1        gpio_init(IO_P51, GPO, GPIO_HIGH, GPO_PUSH_PULL);
+   79   1          gpio_init(IO_P52, GPO, GPIO_HIGH, GPO_PUSH_PULL);
+   80   1          gpio_init(IO_P01, GPO, GPIO_HIGH, GPO_PUSH_PULL);
+   81   1          gpio_init(IO_P02, GPO, GPIO_HIGH, GPO_PUSH_PULL);         
+   82   1                    
+   83   1      //     JG=1;
+   84   1          JG1=0;
+   85   1          JG2=0;
+   86   1          JG3=0;
+   87   1          JG4=0;
+   88   1          JG5=0;
+   89   1          JG6=0;
+   90   1          JG7=0;   
+   91   1      //  P11=P14=P15=0;//³õÊ¼»¯RGB
+   92   1      test =0;
+   93   1      }
+   94          
+   95          void encoder_get(void)
+   96          {
+   97   1          // »ñÈ¡±àÂëÆ÷¼ÆÊý
+   98   1          encoder_data_dir_1 = encoder_get_count(ENCODER_L);  // »ñÈ¡×ó±àÂëÆ÷¼ÆÊý
+   99   1          encoder_data_dir_2 = -encoder_get_count(ENCODER_R);    // »ñÈ¡ÓÒ±àÂëÆ÷¼ÆÊý
+  100   1          
+  101   1          Speed_L = encoder_data_dir_1;
+  102   1          Speed_R =encoder_data_dir_2;
+  103   1          
+  104   1          // Çå¿Õ±àÂëÆ÷¼ÆÊý             Ã¿ 5ms ¾ÍÇåÁãQ
+  105   1          encoder_clear_count(ENCODER_L);
+  106   1          encoder_clear_count(ENCODER_R);
+  107   1          
+  108   1          // ×Ô¶¨ÒåPIDÊäÈë
+  109   1          Pid_vl.Measure = Speed_L;
+  110   1          Pid_vr.Measure = Speed_R;
+  111   1      //  printf("l:%d\r\n",encoder_data_dir_1);
+  112   1      //  printf("r:%d\r\n",encoder_data_dir_2);
+  113   1        
+  114   1      }
+  115          
+  116          //¼¤¹â
+  117          void JGD (void)
+  118          {
+  119   1          if (laser_on) {
+  120   2          laser_delay_count--;
+  121   2          if (laser_delay_count == 0) {
+  122   3              JG1 = JG2 = JG3 = JG4 = JG5 = JG6 = JG7 =0;   // ¹Ø¼¤¹â
+C251 COMPILER V5.60.0,  car_control                                                        10/11/26  15:54:03  PAGE 3   
+
+  123   3      //        JG=0;
+  124   3              laser_on = 0;
+  125   3          }
+  126   2        }
+  127   1      }
+  128          
+  129          void gyro_get(void)
+  130          {
+  131   1           imu660rb_get_acc();                                                         // »ñÈ¡ imu660rb µÄ¼ÓËÙ¶È
+             -²âÁ¿ÊýÖµ  ²»ÓÃ¾Í×¢ÊÍµô£¬£¬
+  132   1           imu660rb_get_gyro();                                                        // »ñÈ¡ imu660rb µÄ½ÇËÙ¶
+             -È²âÁ¿ÊýÖµ
+  133   1           groyz = imu660rb_gyro_transition(imu660rb_gyro_z);
+  134   1      }
+  135          
+  136          // ÍÓÂÝÒÇZÖáÁãÆ«Ð£×¼
+  137          void gyro_calibrate_z(void)                 /////////////////////////////////////////////////////////////////////
+             -///////
+  138          {
+  139   1          int i;
+  140   1          float sum = 0;
+  141   1      
+  142   1          // Á¬Ðø²ÉÑù200´ÎÇóÆ½¾ù
+  143   1          for(i=0; i<200; i++)
+  144   1          {
+  145   2              imu660rb_get_gyro();
+  146   2              sum += imu660rb_gyro_transition(imu660rb_gyro_z);
+  147   2              system_delay_ms(1);
+  148   2          }
+  149   1      
+  150   1          gyro_offset_z = sum / 200.0f; // µÃµ½ÁãÆ«
+  151   1          FJ_Angle = 0;                // ½Ç¶ÈÇåÁã
+  152   1      }
+  153          
+  154          // ¼ÆËã³µÉí×ªÏò½Ç¶È£¨ºËÐÄº¯Êý£©
+  155          void get_car_angle(void)
+  156          {
+  157   1        // ×´Ì¬²»µÈÓÚ0£¬²Å¼ÆËã½Ç¶È
+  158   1        if(Island_State > 2)
+  159   1        {
+  160   2          
+  161   2          if(Island_State == 8)
+  162   2          {
+  163   3            FJ_Angle = 0;  // ×´Ì¬8Ö±½Ó¹éÁã£¬²»ÔÙ»ý·Ö
+  164   3          }
+  165   2          else
+  166   2          {
+  167   3            // 1. ¶ÁÈ¡ÍÓÂÝÒÇ
+  168   3            imu660rb_get_gyro();
+  169   3            groyz = imu660rb_gyro_transition(imu660rb_gyro_z);
+  170   3      
+  171   3            // 2. ÁãÆ«Ð£×¼
+  172   3            groyz -= gyro_offset_z;
+  173   3      
+  174   3            // 3. 5ms »ý·ÖËã½Ç¶È
+  175   3            FJ_Angle += groyz * 0.005f;
+  176   3      
+  177   3            // ======================
+  178   3            // 4. ½Ç¶ÈÏÞ·ù
+  179   3          if(FJ_Angle > 360)   FJ_Angle = 360;
+  180   3          if(FJ_Angle < -360)  FJ_Angle = -360;
+  181   3          }
+  182   2        }
+  183   1        else
+  184   1        {
+  185   2          // ×´Ì¬=0 ¡ú ÇåÁã½Ç¶È
+C251 COMPILER V5.60.0,  car_control                                                        10/11/26  15:54:03  PAGE 4   
+
+  186   2          FJ_Angle = 0;
+  187   2        }
+  188   1      }
+  189          
+  190          
+  191          void car_pwm_set(RS_Car_wheel car_wheel, RS_Direct car_dir, uint32 RS_PWM)
+  192          {
+  193   1          switch (car_wheel)
+  194   1          {
+  195   2              // ×óµç»ú
+  196   2              case L_wheel:
+  197   2                  pwm_set_duty(PWM_L, RS_PWM);
+  198   2                  if (car_dir == Go)
+  199   2                      dir_l_state = Go;
+  200   2                  else if (car_dir == Back)
+  201   2                      dir_l_state = Back;
+  202   2                  break;
+  203   2              // ÓÒµç»ú    
+  204   2              case R_wheel:
+  205   2                  pwm_set_duty(PWM_R, RS_PWM);
+  206   2                  if (car_dir == Go)
+  207   2                      dir_r_state = Go;
+  208   2                  else if (car_dir == Back)
+  209   2                      dir_r_state = Back;
+  210   2                  break;
+  211   2              default:
+  212   2                  break;
+  213   2          }
+  214   1      }
+  215          
+  216          void car_control_n(int32 L, int32 R)  // ¿ØÖÆµç»úÔË¶¯
+  217          {
+  218   1          if (L > 0)
+  219   1          {
+  220   2              gpio_set_level(Dir_L, GPIO_HIGH);
+  221   2              car_pwm_set(L_wheel, Go, L);
+  222   2          }
+  223   1          else
+  224   1          {
+  225   2              gpio_set_level(Dir_L, GPIO_LOW);
+  226   2              car_pwm_set(L_wheel, Back, -L);
+  227   2          }
+  228   1          
+  229   1          if (R > 0)
+  230   1          {
+  231   2              gpio_set_level(Dir_R, GPIO_HIGH);
+  232   2              car_pwm_set(R_wheel, Go, R);
+  233   2          }
+  234   1          else
+  235   1          {
+  236   2              gpio_set_level(Dir_R, GPIO_LOW);
+  237   2              car_pwm_set(R_wheel, Back, -R);
+  238   2          }
+  239   1      }
+  240          
+  241          void car_control(void)
+  242          {
+  243   1          car_control_n(PWM_L_set, PWM_R_set);
+  244   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =    ------     ------
+  ecode size           =      1205     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+C251 COMPILER V5.60.0,  car_control                                                        10/11/26  15:54:03  PAGE 5   
+
+  pdata size           =    ------     ------
+  xdata size           =        68         10
+  xdata-const size     =    ------     ------
+  edata size           =    ------     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =       173     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

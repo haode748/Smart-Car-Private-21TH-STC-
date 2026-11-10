@@ -1,0 +1,409 @@
+C251 COMPILER V5.60.0,  Para_tuning                                                        10/11/26  15:54:03  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE Para_tuning
+OBJECT MODULE PLACED IN .\out_file\Para_tuning.obj
+COMPILER INVOKED BY: D:\ruanjian\51\C251\BIN\C251.EXE ..\code\Para_tuning.c LARGE FLOAT64 ROM(HUGE) WARNINGLEVEL(3) OPTI
+                    -MIZE(SIZE) BROWSE INCDIR(..\..\libraries\zf_common;..\..\libraries\zf_components;..\..\libraries\zf_device;..\..\librari
+                    -es\zf_driver;..\user;..\code;..\..\libraries\zf_components\stc32g_usb_lib;..\..\libraries\zf_components\seekfree_assista
+                    -nt) DEBUG PRINT(.\out_file\Para_tuning.lst) TABS(2) OBJECT(.\out_file\Para_tuning.obj) 
+
+stmt  level    source
+
+    1          #include "Para_tuning.h"
+    2          uint16 Arrow_point_old;
+    3          PID_Const constPid_wheel_turn;
+    4          PID_Const constPid_turn;
+    5          PID_Const constPid_vr;
+    6          PID_Const constPid_vl;
+    7          int temp_change = 0;
+    8          int temp_change_old = 0;//加的
+    9          uint8 lcd_enabled = 1;   // 默认屏幕启用
+   10          static uint8 display_stage = 0;  // 0:图像, 1:调参, 2:熄屏
+   11          
+   12          static uint8 key3_pressed = 0;
+   13          static uint8 key4_pressed = 0;
+   14          
+   15          
+   16          // 只保存调参所需的常数
+   17          typedef struct {
+   18              float Kp;
+   19              float Ki;
+   20              float Kd;
+   21              int32 Target;
+   22          } PID_Save_Compact;
+   23          
+   24          // 完整保存数据块
+   25          typedef struct {
+   26              uint16 magic;                  // 固定魔数 0xA5A5
+   27              PID_Save_Compact pid_vl;
+   28              PID_Save_Compact pid_vr;
+   29              PID_Save_Compact pid_turn;
+   30              PID_Save_Compact pid_wheel_turn;
+   31              float step_num;                  // 调参步进值
+   32              float float_step;                // 步长
+   33              float kp2;                        //kp2
+   34              float kd2;
+   35              uint16 checksum;               // 校验和
+   36          } SavedParams;
+   37          //typedef unsigned char      uint8;
+   38          //typedef unsigned int       uint16;
+   39          //typedef unsigned long      uint32;
+   40          //typedef signed char        int8;
+   41          //typedef signed int         int16;
+   42          //typedef signed long        int32;
+   43          //编码器暂存值
+   44          float  step_num=0;
+   45          int8  point_num=0;
+   46          int8  change_num=0;
+   47          
+   48          uint16 run_car_num = 0;  
+   49          
+   50          float  float_step=0.1;
+   51          
+   52          RS_RUNCAR RUNCAR = none_run_car;
+   53          
+   54          //按键初始化
+   55          void Key_init(void)
+   56          {
+C251 COMPILER V5.60.0,  Para_tuning                                                        10/11/26  15:54:03  PAGE 2   
+
+   57   1      //  tsl1401_finish_flag= 1;
+   58   1      //gpio_init(IO_P70, GPI, 0, GPI_PULL_UP);
+   59   1      //gpio_init(IO_P71, GPI, 0, GPI_PULL_UP);
+   60   1      //gpio_init(IO_P72, GPI, 0, GPI_PULL_UP);
+   61   1      //gpio_init(IO_P73, GPI, 0, GPI_PULL_UP);
+   62   1        
+   63   1      
+   64   1        gpio_init(KEY1_PIN, GPI, 1, GPI_PULL_UP);
+   65   1        gpio_init(KEY2_PIN, GPI, 1, GPI_PULL_UP);
+   66   1        gpio_init(KEY3_PIN, GPI, 1, GPI_PULL_UP);
+   67   1        gpio_init(KEY4_PIN, GPI, 1, GPI_PULL_UP);
+   68   1        gpio_init(KEY5_PIN, GPI, 1, GPI_PULL_UP);
+   69   1        
+   70   1      
+   71   1      }
+   72          uint8 is_auto_save_enabled(void) {
+   73   1          // 拨码开关闭合（ON）时引脚为低电平（0），所以取反
+   74   1          return (gpio_get_level(KEY5_PIN) == 0) ? 1 : 0;
+   75   1      }
+   76          //按键控制 如果小车正在运行(run_car状态)，计数器递增当运行500次循环后，自动停止小车
+   77          // 辅助函数：阻塞检测长按（ms为长按时间阈值）
+   78          static uint8 is_long_press(uint8 pin, uint32 ms) {
+   79   1          uint32 cnt = 0;
+   80   1          while (gpio_get_level(pin) == 0) {
+   81   2              system_delay_ms(1);
+   82   2              if (++cnt >= ms) return 1;
+   83   2          }
+   84   1          return 0;
+   85   1      }
+   86          
+   87          
+   88          static uint16 calc_checksum(SavedParams *p) {
+   89   1          uint16 sum = 0;
+   90   1          uint8 *ptr = (uint8*)p;
+   91   1          uint16 i;
+   92   1          for (i = 0; i < sizeof(SavedParams) - sizeof(p->checksum); i++) {
+   93   2              sum += ptr[i];
+   94   2          }
+   95   1          return sum;
+   96   1      }
+   97          
+   98          // 选择 EEPROM 起始地址（建议使用最后一页，此处以 0x0E00 为例，您可根据实际芯片调整）
+   99          
+  100          void save_pid_params_to_flash(void) {
+  101   1          SavedParams params;
+  102   1          
+  103   1          // 1. 填充魔数
+  104   1          params.magic = 0xA5A5;
+  105   1          
+  106   1          // 2. 填充左轮速度环参数
+  107   1          params.pid_vl.Kp = Pid_vl.Kp;
+  108   1          params.pid_vl.Ki = Pid_vl.Ki;
+  109   1          params.pid_vl.Kd = Pid_vl.Kd;
+  110   1          params.pid_vl.Target = Pid_vl.Target;
+  111   1          
+  112   1          // 3. 填充右轮速度环参数
+  113   1          params.pid_vr.Kp = Pid_vr.Kp;
+  114   1          params.pid_vr.Ki = Pid_vr.Ki;
+  115   1          params.pid_vr.Kd = Pid_vr.Kd;
+  116   1          params.pid_vr.Target = Pid_vr.Target;
+  117   1          
+  118   1          // 4. 填充转向环参数
+  119   1          params.pid_turn.Kp = Pid_turn.Kp;
+  120   1          params.pid_turn.Ki = Pid_turn.Ki;
+  121   1          params.pid_turn.Kd = Pid_turn.Kd;
+  122   1          params.pid_turn.Target = Pid_turn.Target;
+C251 COMPILER V5.60.0,  Para_tuning                                                        10/11/26  15:54:03  PAGE 3   
+
+  123   1          
+  124   1          // 5. 填充差速转向环参数
+  125   1          params.pid_wheel_turn.Kp = Pid_wheel_turn.Kp;
+  126   1          params.pid_wheel_turn.Ki = Pid_wheel_turn.Ki;
+  127   1          params.pid_wheel_turn.Kd = Pid_wheel_turn.Kd;
+  128   1          params.pid_wheel_turn.Target = Pid_wheel_turn.Target;
+  129   1          
+  130   1          // 6. 步长变量
+  131   1          params.step_num = step_num;
+  132   1          params.float_step = float_step;
+  133   1          params.kp2=kp2;
+  134   1          params.kd2=kd2;
+  135   1          // 7. 计算校验和并填充
+  136   1          params.checksum = calc_checksum(&params);
+  137   1          
+  138   1          // 8. 写入 EEPROM（自动擦除整页，512字节）
+  139   1          extern_iap_write_buff(PARAM_SAVE_ADDR, (uint8*)&params, sizeof(SavedParams));
+  140   1          
+  141   1      }
+  142          
+  143          void load_pid_params_from_flash(void) {
+  144   1          SavedParams params;
+  145   1          
+  146   1          // 1. 从 EEPROM 读取数据
+  147   1          iap_read_buff(PARAM_SAVE_ADDR, (uint8*)&params, sizeof(SavedParams));
+  148   1          
+  149   1          // 2. 验证魔数和校验和
+  150   1          if (params.magic == 0xA5A5 && params.checksum == calc_checksum(&params)) {
+  151   2              // 数据有效，恢复参数
+  152   2              Pid_vl.Kp = params.pid_vl.Kp;
+  153   2              Pid_vl.Ki = params.pid_vl.Ki;
+  154   2              Pid_vl.Kd = params.pid_vl.Kd;
+  155   2              Pid_vl.Target = params.pid_vl.Target;
+  156   2              
+  157   2              Pid_vr.Kp = params.pid_vr.Kp;
+  158   2              Pid_vr.Ki = params.pid_vr.Ki;
+  159   2              Pid_vr.Kd = params.pid_vr.Kd;
+  160   2              Pid_vr.Target = params.pid_vr.Target;
+  161   2              
+  162   2              Pid_turn.Kp = params.pid_turn.Kp;
+  163   2              Pid_turn.Ki = params.pid_turn.Ki;
+  164   2              Pid_turn.Kd = params.pid_turn.Kd;
+  165   2              Pid_turn.Target = params.pid_turn.Target;
+  166   2              
+  167   2              Pid_wheel_turn.Kp = params.pid_wheel_turn.Kp;
+  168   2              Pid_wheel_turn.Ki = params.pid_wheel_turn.Ki;
+  169   2              Pid_wheel_turn.Kd = params.pid_wheel_turn.Kd;
+  170   2              Pid_wheel_turn.Target = params.pid_wheel_turn.Target;
+  171   2              
+  172   2              step_num = params.step_num;
+  173   2              float_step = params.float_step;
+  174   2              kp2= params.kp2;
+  175   2              kd2= params.kd2;
+  176   2          } else {
+  177   2      
+  178   2              // 可选：自动将当前默认参数保存一次，便于后续使用
+  179   2               save_pid_params_to_flash();
+  180   2          }
+  181   1      }
+  182          
+  183          // 按键控制主函数
+  184          // 按键控制主函数
+  185          void Key_down(void) {
+  186   1          // ========== KEY1：切换显示模式（图像→调参→熄屏） ==========
+  187   1          if (gpio_get_level(KEY1_PIN) == 0) {
+  188   2              system_delay_ms(20);
+C251 COMPILER V5.60.0,  Para_tuning                                                        10/11/26  15:54:03  PAGE 4   
+
+  189   2              if (gpio_get_level(KEY1_PIN) == 0) {
+  190   3                  if (RUNCAR == run_car) {
+  191   4                      while (gpio_get_level(KEY1_PIN) == 0);
+  192   4                  } else {
+  193   4                      display_stage++;
+  194   4                      if (display_stage > 2) display_stage = 0;
+  195   4                      switch (display_stage) {
+  196   5                          case 0: // 图像
+  197   5                              lcd_enabled = 1;
+  198   5                              IPS200_BLK(1);
+  199   5                              Screen_mode = Image;
+  200   5                              ips200_clear(RGB565_WHITE);
+  201   5                              break;
+  202   5                          case 1: // 调参
+  203   5                              lcd_enabled = 1;
+  204   5                              IPS200_BLK(1);
+  205   5                              Screen_mode = para_tun;
+  206   5                              ips200_clear(RGB565_WHITE);
+  207   5                              break;
+  208   5                          case 2: // 熄屏
+  209   5                              lcd_enabled = 0;
+  210   5                              IPS200_BLK(0);
+  211   5                              break;
+  212   5                      }
+  213   4                      while (gpio_get_level(KEY1_PIN) == 0);
+  214   4                  }
+  215   3              }
+  216   2          }
+  217   1      
+  218   1          // ========== KEY2：发车（同时熄屏） ==========
+  219   1          if (gpio_get_level(KEY2_PIN) == 0) {
+  220   2              system_delay_ms(20);
+  221   2              if (gpio_get_level(KEY2_PIN) == 0) {
+  222   3                  lcd_enabled = 0;
+  223   3                  IPS200_BLK(0);
+  224   3                  RUNCAR = run_car;
+  225   3                  run_car_num = 0;
+  226   3                  while (gpio_get_level(KEY2_PIN) == 0);
+  227   3              }
+  228   2          }
+  229   1      
+  230   1          // ========== KEY3：上移 / 增加值 ==========
+  231   1          if (gpio_get_level(KEY3_PIN) == 0) {
+  232   2              if (!key3_pressed) {
+  233   3                  key3_pressed = 1;
+  234   3                  system_delay_ms(20);
+  235   3                  if (gpio_get_level(KEY3_PIN) == 0) {
+  236   4                      if (is_long_press(KEY3_PIN, 300)) {
+  237   5                          // 长按增加参数
+  238   5                          if (Screen_mode == para_tun) {
+  239   6                              switch (Arrow_point) {
+  240   7                                  case 0:  Pid_vl.Target += (int)float_step; Pid_vr.Target = Pid_vl.Target; bre
+             -ak;
+  241   7                                  case 20: Pid_vl.Kp     += float_step; break;
+  242   7                                  case 40: Pid_vr.Kd     += float_step; break;
+  243   7                                  case 60: Pid_vr.Kp     += float_step; break;
+  244   7                                  case 80: Pid_vr.Kd     += float_step; break;
+  245   7                                  case 100:Pid_turn.Kp   += float_step; break;
+  246   7                                  case 120:Pid_turn.Kd   += float_step; break;
+  247   7                                  case 140:Pid_wheel_turn.Kp += float_step; break;
+  248   7                                  case 160:Pid_wheel_turn.Kd += float_step; break;
+  249   7                                  case 180:kp2 += float_step; break;
+  250   7                                  case 200:kd2 += float_step; break;
+  251   7                                  default: break;
+  252   7                              }
+  253   6                              if (is_auto_save_enabled()) {
+C251 COMPILER V5.60.0,  Para_tuning                                                        10/11/26  15:54:03  PAGE 5   
+
+  254   7                                  save_pid_params_to_flash();
+  255   7                              }
+  256   6                          }
+  257   5                      } else {
+  258   5                          // 短按光标上移
+  259   5                          if (Screen_mode == para_tun) {
+  260   6                              if (Arrow_point >= 20) Arrow_point -= 20;
+  261   6                              else Arrow_point = 200;
+  262   6                          }
+  263   5                      }
+  264   4                      while (gpio_get_level(KEY3_PIN) == 0);
+  265   4                  }
+  266   3              }
+  267   2          } else {
+  268   2              key3_pressed = 0;
+  269   2          }
+  270   1      
+  271   1          // ========== KEY4：下移 / 减少值 ==========
+  272   1          if (gpio_get_level(KEY4_PIN) == 0) {
+  273   2              if (!key4_pressed) {
+  274   3                  key4_pressed = 1;
+  275   3                  system_delay_ms(20);
+  276   3                  if (gpio_get_level(KEY4_PIN) == 0) {
+  277   4                      if (is_long_press(KEY4_PIN, 300)) {
+  278   5                          // 长按减少参数
+  279   5                          if (Screen_mode == para_tun) {
+  280   6                              switch (Arrow_point) {
+  281   7                                  case 0:  Pid_vl.Target -= (int)float_step; Pid_vr.Target = Pid_vl.Target; bre
+             -ak;
+  282   7                                  case 20: Pid_vl.Kp     -= float_step; break;
+  283   7                                  case 40: Pid_vl.Ki     -= float_step; break;
+  284   7                                  case 60: Pid_vl.Kd     -= float_step; break;
+  285   7                                  case 80: Pid_vr.Kp     -= float_step; break;
+  286   7                                  case 100:Pid_vr.Ki     -= float_step; break;
+  287   7                                  case 120:Pid_vr.Kd     -= float_step; break;
+  288   7                                  case 140:Pid_turn.Kp   -= float_step; break;
+  289   7                                  case 160:Pid_turn.Kd   -= float_step; break;
+  290   7                                  case 180:Pid_wheel_turn.Kp -= float_step; break;
+  291   7                                  case 200:Pid_wheel_turn.Kd -= float_step; break;
+  292   7                                  default: break;
+  293   7                              }
+  294   6                              if (is_auto_save_enabled()) {
+  295   7                                  save_pid_params_to_flash();
+  296   7                              }
+  297   6                          }
+  298   5                      } else {
+  299   5                          // 短按光标下移
+  300   5                          if (Screen_mode == para_tun) {
+  301   6                              if (Arrow_point <= 180) Arrow_point += 20;
+  302   6                              else Arrow_point = 0;
+  303   6                          }
+  304   5                      }
+  305   4                      while (gpio_get_level(KEY4_PIN) == 0);
+  306   4                  }
+  307   3              }
+  308   2          } else {
+  309   2              key4_pressed = 0;
+  310   2          }
+  311   1      
+  312   1          // ========== KEY5：手动保存参数 ==========
+  313   1          if (gpio_get_level(KEY5_PIN) == 0) {
+  314   2              system_delay_ms(20);
+  315   2              if (gpio_get_level(KEY5_PIN) == 0) {
+  316   3                  if (Screen_mode == para_tun) {
+  317   4                      save_pid_params_to_flash();
+  318   4                  }
+C251 COMPILER V5.60.0,  Para_tuning                                                        10/11/26  15:54:03  PAGE 6   
+
+  319   3                  while (gpio_get_level(KEY5_PIN) == 0);
+  320   3              }
+  321   2          }
+  322   1      }
+  323          ////轮胎调参    轮子逆时针是向下顺时针向上移动->
+  324          //void Tire_tuning(void)
+  325          //{
+  326          //    if (Speed_L != 0)
+  327          //    {
+  328          //        // 正转=箭头下移，反转=箭头上移
+  329          //        if (Speed_L > 0)
+  330          //        {
+  331          //            point_num++;
+  332          //            if(point_num > 10) point_num = 0; // 到最下回到顶部
+  333          //        }
+  334          //        else
+  335          //        {
+  336          //            point_num--;
+  337          //            if(point_num < 0) point_num = 10; // 到最上回到底部
+  338          //        }
+  339          //        Arrow_point = 20 * point_num; // 行间距20，对应参数行
+  340          
+  341          //        // 切换参数时同步暂存值（不变）
+  342          //        if (Screen_mode == para_tun)
+  343          //        {
+  344          //            switch (Arrow_point)
+  345          //            {
+  346          //                case 0:{  temp_change =  Pid_vl.Target  ;}break;
+  347          //                case 20:{  temp_change = Pid_vl.Kp   ;}break;
+  348          //                case 40:{ temp_change  =  Pid_vl.Ki;}break;
+  349          //                case 60:{ temp_change  = Pid_vl.Kd  ;}break;
+  350          //                case 80:{ temp_change = Pid_vr.Kp  ;}break;
+  351          //                case 100:{temp_change = Pid_vr.Ki  ;}break;
+  352          //                case 120:{ temp_change = Pid_vr.Kd  ;}break;
+  353          //                case 140:{ temp_change = Pid_turn.Kp ;}break;
+  354          //                case 160:{ temp_change = Pid_turn.Kd  ;}break;
+  355          //                case 180:{ temp_change = Pid_wheel_turn.Kp  ;}break;
+  356          //                case 200:{ temp_change = Pid_wheel_turn.Kd ;}break;
+  357          //                default:break;
+  358          //            }
+  359          //        }
+  360          //    }
+  361          //}
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =    ------     ------
+  ecode size           =      2688     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =        88        173
+  xdata-const size     =    ------     ------
+  edata size           =    ------     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =        82     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

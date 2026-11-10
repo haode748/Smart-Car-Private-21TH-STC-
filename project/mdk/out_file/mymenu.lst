@@ -1,0 +1,125 @@
+C251 COMPILER V5.60.0,  mymenu                                                             10/07/26  17:04:15  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE mymenu
+OBJECT MODULE PLACED IN .\out_file\mymenu.obj
+COMPILER INVOKED BY: D:\keil.c251\C251\BIN\C251.EXE ..\code\mymenu.c LARGE FLOAT64 ROM(HUGE) WARNINGLEVEL(3) OPTIMIZE(SI
+                    -ZE) BROWSE INCDIR(..\..\libraries\zf_common;..\..\libraries\zf_components;..\..\libraries\zf_device;..\..\libraries\zf_d
+                    -river;..\user;..\code;..\..\libraries\zf_components\stc32g_usb_lib;..\..\libraries\zf_components\seekfree_assistant) DEB
+                    -UG PRINT(.\out_file\mymenu.lst) TABS(2) OBJECT(.\out_file\mymenu.obj) 
+
+stmt  level    source
+
+    1          #include "zf_common_headfile.h"
+    2          #include "ALL.h"
+*** ERROR C318 IN LINE 2 OF ..\code\mymenu.c: can't open file 'ALL.h'
+    3          #include "menu.h"
+    4          #include "mymenu.h"
+*** ERROR C318 IN LINE 4 OF ..\code\mymenu.h: can't open file 'ALL.h'
+*** ERROR C25 IN LINE 7 OF ..\code\mymenu.h: syntax error near '*'
+    5          
+    6          extern float encoder_date1;
+    7          extern float encoder_date2;
+    8          
+    9          Menu_Item head;
+*** WARNING C34 IN LINE 9 OF ..\code\mymenu.c: 'head': missing declaration specifiers
+*** ERROR C42 IN LINE 9 OF ..\code\mymenu.c: 'head': not in formal parameter list
+   10          Menu_Item *Key;
+*** WARNING C34 IN LINE 10 OF ..\code\mymenu.c: 'Menu_Item': missing declaration specifiers
+*** ERROR C42 IN LINE 10 OF ..\code\mymenu.c: 'Menu_Item': not in formal parameter list
+*** ERROR C25 IN LINE 10 OF ..\code\mymenu.c: syntax error near '*'
+*** WARNING C34 IN LINE 10 OF ..\code\mymenu.c: 'Key': missing declaration specifiers
+*** ERROR C42 IN LINE 10 OF ..\code\mymenu.c: 'Key': not in formal parameter list
+   11          
+   12          Menu_Item m1, m2, m3, m4, m5, m6, m7, m8;
+*** WARNING C34 IN LINE 12 OF ..\code\mymenu.c: 'Menu_Item': missing declaration specifiers
+*** ERROR C42 IN LINE 12 OF ..\code\mymenu.c: 'Menu_Item': not in formal parameter list
+*** ERROR C25 IN LINE 12 OF ..\code\mymenu.c: syntax error near 'm1'
+*** WARNING C34 IN LINE 12 OF ..\code\mymenu.c: 'm1': missing declaration specifiers
+*** ERROR C42 IN LINE 12 OF ..\code\mymenu.c: 'm1': not in formal parameter list
+*** WARNING C34 IN LINE 12 OF ..\code\mymenu.c: 'm2': missing declaration specifiers
+*** ERROR C42 IN LINE 12 OF ..\code\mymenu.c: 'm2': not in formal parameter list
+*** WARNING C34 IN LINE 12 OF ..\code\mymenu.c: 'm3': missing declaration specifiers
+*** ERROR C42 IN LINE 12 OF ..\code\mymenu.c: 'm3': not in formal parameter list
+*** WARNING C34 IN LINE 12 OF ..\code\mymenu.c: 'm4': missing declaration specifiers
+*** ERROR C42 IN LINE 12 OF ..\code\mymenu.c: 'm4': not in formal parameter list
+*** WARNING C34 IN LINE 12 OF ..\code\mymenu.c: 'm5': missing declaration specifiers
+*** ERROR C42 IN LINE 12 OF ..\code\mymenu.c: 'm5': not in formal parameter list
+*** WARNING C34 IN LINE 12 OF ..\code\mymenu.c: 'm6': missing declaration specifiers
+*** ERROR C42 IN LINE 12 OF ..\code\mymenu.c: 'm6': not in formal parameter list
+*** WARNING C34 IN LINE 12 OF ..\code\mymenu.c: 'm7': missing declaration specifiers
+*** ERROR C42 IN LINE 12 OF ..\code\mymenu.c: 'm7': not in formal parameter list
+*** WARNING C34 IN LINE 12 OF ..\code\mymenu.c: 'm8': missing declaration specifiers
+*** ERROR C42 IN LINE 12 OF ..\code\mymenu.c: 'm8': not in formal parameter list
+   13          
+   14          float number1 = 0.0f;
+*** ERROR C142 IN LINE 14 OF ..\code\mymenu.c: illegal initialization
+   15          
+   16          
+   17          void menu_Init(PID_t *pid1, PID_SERVO *pid2)
+*** ERROR C25 IN LINE 17 OF ..\code\mymenu.c: syntax error near '*'
+   18          {
+*** ERROR C42 IN LINE 18 OF ..\code\mymenu.c: 'menu_Init': not in formal parameter list
+   19              Menu_Item *motor;
+*** ERROR C42 IN LINE 19 OF ..\code\mymenu.c: 'motor': not in formal parameter list
+   20              Menu_Item *servo;
+*** WARNING C34 IN LINE 20 OF ..\code\mymenu.c: 'Menu_Item': missing declaration specifiers
+*** ERROR C42 IN LINE 20 OF ..\code\mymenu.c: 'Menu_Item': not in formal parameter list
+*** ERROR C25 IN LINE 20 OF ..\code\mymenu.c: syntax error near '*'
+C251 COMPILER V5.60.0,  mymenu                                                             10/07/26  17:04:15  PAGE 2   
+
+*** WARNING C34 IN LINE 20 OF ..\code\mymenu.c: 'servo': missing declaration specifiers
+*** ERROR C42 IN LINE 20 OF ..\code\mymenu.c: 'servo': not in formal parameter list
+   21          
+   22              head.variable = NULL;
+*** WARNING C34 IN LINE 22 OF ..\code\mymenu.c: 'head': missing declaration specifiers
+*** ERROR C42 IN LINE 22 OF ..\code\mymenu.c: 'head': not in formal parameter list
+*** ERROR C25 IN LINE 22 OF ..\code\mymenu.c: syntax error near '.'
+   23              head.father = NULL;
+   24              head.first_son = NULL;
+   25              head.kind = Menu_Folder;
+   26              head.last_brother = NULL;
+   27              head.name = "MENU";
+   28              head.next_brother = NULL;
+   29              head.No = 0;
+   30              head.sons = 0;
+   31              head.select = 0;
+   32          
+   33              motor = dynamicCreate_Menu_Folder(&head, "motor");
+   34              servo = dynamicCreate_Menu_Folder(&head, "servo");
+   35          
+   36                  Create_Menu_Number(motor, &m1, "Kp", &pid1->Kp, float_Box);
+   37                  Create_Menu_Number(motor, &m2, "Ki", &pid1->Ki, float_Box);
+   38                  Create_Menu_Number(motor, &m3, "Kd", &pid1->Kd, float_Box);
+   39              
+   40                  Create_Menu_Number(servo, &m4, "Kp", &pid2->kp1, float_Box);
+   41                  Create_Menu_Number(servo, &m5, "Ki", &pid2->kp2, float_Box);
+   42                  Create_Menu_Number(servo, &m6, "Kd", &pid2->kd1, float_Box);
+   43            
+   44          
+   45              Key = head.first_son;
+   46          }
+   47          
+   48          /* œ‘ æπ‚±Í */
+   49          void Show_Key(void)
+   50          {
+   51              Menu_Item *h;
+*** WARNING C34 IN LINE 51 OF ..\code\mymenu.c: 'h': missing declaration specifiers
+*** ERROR C42 IN LINE 51 OF ..\code\mymenu.c: 'h': not in formal parameter list
+   52              Menu_Item *s;
+*** WARNING C34 IN LINE 52 OF ..\code\mymenu.c: 'Menu_Item': missing declaration specifiers
+*** ERROR C42 IN LINE 52 OF ..\code\mymenu.c: 'Menu_Item': not in formal parameter list
+*** ERROR C25 IN LINE 52 OF ..\code\mymenu.c: syntax error near '*'
+*** WARNING C34 IN LINE 52 OF ..\code\mymenu.c: 's': missing declaration specifiers
+*** ERROR C42 IN LINE 52 OF ..\code\mymenu.c: 's': not in formal parameter list
+   53              int i;
+*** ERROR C42 IN LINE 53 OF ..\code\mymenu.c: 'i': not in formal parameter list
+   54          
+   55              if(Key == NULL) return;
+*** ERROR C25 IN LINE 55 OF ..\code\mymenu.c: syntax error near 'if'
+*** ERROR C25 IN LINE 55 OF ..\code\mymenu.c: syntax error near '=='
+*** ERROR C25 IN LINE 55 OF ..\code\mymenu.c: syntax error near 'void'
+*** ERROR C25 IN LINE 55 OF ..\code\mymenu.c: syntax error near ')'
+*** ERROR C7 IN LINE 55 OF ..\code\mymenu.c: compilation aborted
+
+C251 COMPILATION COMPLETE.  18 WARNING(S),  36 ERROR(S)

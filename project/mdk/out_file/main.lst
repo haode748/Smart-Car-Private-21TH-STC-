@@ -1,0 +1,442 @@
+C251 COMPILER V5.60.0,  main                                                               10/11/26  17:19:30  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE main
+OBJECT MODULE PLACED IN .\out_file\main.obj
+COMPILER INVOKED BY: D:\ruanjian\51\C251\BIN\C251.EXE ..\user\main.c LARGE FLOAT64 ROM(HUGE) WARNINGLEVEL(3) OPTIMIZE(SI
+                    -ZE) BROWSE INCDIR(..\..\libraries\zf_common;..\..\libraries\zf_components;..\..\libraries\zf_device;..\..\libraries\zf_d
+                    -river;..\user;..\code;..\..\libraries\zf_components\stc32g_usb_lib;..\..\libraries\zf_components\seekfree_assistant) DEB
+                    -UG PRINT(.\out_file\main.lst) TABS(2) OBJECT(.\out_file\main.obj) 
+
+stmt  level    source
+
+    1          /********************************************************************************************************
+             -*************
+    2          * STC32G144K Opensourec Library 即（STC32G144K 开源库）是一个基于官方 SDK 接口的第三方开源库
+    3          * Copyright (c) 2025 SEEKFREE 逐飞科技
+    4          *
+    5          * 本文件是STC32G144K开源库的一部分
+    6          *
+    7          * STC32G144K 开源库 是免费软件
+    8          * 您可以根据自由软件基金会发布的 GPL（GNU General Public License，即 GNU通用公共许可证）的条款
+    9          * 即 GPL 的第3版（即 GPL3.0）或（您选择的）任何后来的版本，重新发布和/或修改它
+   10          *
+   11          * 本开源库的发布是希望它能发挥作用，但并未对其作任何的保证
+   12          * 甚至没有隐含的适销性或适合特定用途的保证
+   13          * 更多细节请参见 GPL
+   14          *
+   15          * 您应该在收到本开源库的同时收到一份 GPL 的副本
+   16          * 如果没有，请参阅<https://www.gnu.org/licenses/>
+   17          *
+   18          * 额外注明：
+   19          * 本开源库使用 GPL3.0 开源许可证协议 以上许可申明为译文版本
+   20          * 许可申明英文版在 libraries/doc 文件夹下的 GPL3_permission_statement.txt 文件中
+   21          * 许可证副本在 libraries 文件夹下 即该文件夹下的 LICENSE 文件
+   22          * 欢迎各位使用并传播本程序 但修改内容时必须保留逐飞科技的版权声明（即本声明）
+   23          *
+   24          * 文件名称          
+   25          * 公司名称          成都逐飞科技有限公司
+   26          * 版本信息          查看 libraries/doc 文件夹内 version 文件 版本说明
+   27          * 开发环境          MDK FOR C251
+   28          * 适用平台          STC32G144K
+   29          * 店铺链接          https://seekfree.taobao.com/
+   30          *
+   31          * 修改记录
+   32          * 日期              作者           备注
+   33          * 2025-11-20        大W            first version
+   34          *********************************************************************************************************
+             -***********/
+   35          // main.c
+   36          #include "zf_common_headfile.h"
+   37          #include "hexin.h"
+   38          #include "wu_motor.h"
+   39          
+   40          #define PIT_CH TIM0_PIT  // 定时器通道（去掉多余括号，避免宏解析错误）
+   41          #define PIT_MS 5       // 中断周期5ms
+   42          #define LED1                    (IO_P52 )
+   43          
+   44          uint8 set_flage=0;
+   45          uint8 data_buffer[32];
+   46          uint8 data_len;
+   47          uint8  speed=0;
+   48          uint16 hServo_duty=0;
+   49          
+   50          //uint8  new_speed=0;
+   51          ////测试
+   52          //int p_;
+   53          //int d_;
+   54          extern uint8 speed;
+C251 COMPILER V5.60.0,  main                                                               10/11/26  17:19:30  PAGE 2   
+
+   55          //extern new_speed;
+   56          void pit_handler(void);
+   57          //测试
+   58          static uint16 count=0;
+   59          extern float p_;
+   60          extern float d_;
+   61          extern  uint16 hServo_duty;
+   62          extern float kd2;
+   63          void pit_handler(void);
+   64          
+   65          extern int Island_State;     //环岛状态标志
+   66          extern int Left_Island_Flag; //左右环岛标志
+   67          extern int Right_Island_Flag;//左右环岛标志
+   68          extern float a;
+   69          extern RS_RUNCAR RUNCAR ;
+   70          void main(void)
+   71          {
+   72   1          clock_init(SYSTEM_CLOCK_96M);  // 时钟配置及系统初始化<务必保留>
+   73   1          debug_init();                  // 调试串口信息初始化 
+   74   1          mt9v03x_init();
+   75   1          Car_inital();                  // 电机驱动初始（要用，先注释掉）
+   76   1          PID_Start_init();             // 4 个 PID 的参数初始化
+   77   1          pit_ms_init(PIT_CH, 5 , pit_handler); // ★ 5ms 定时中断，执行 pit_handler      ////////////////////////
+             -/////////////////
+   78   1          ips200_init();    
+   79   1          Key_init();
+   80   1          gpio_init(LED1, GPO, 0, GPO_PUSH_PULL);
+   81   1          
+   82   1      //    Wu_motor_Init();
+   83   1          
+   84   1      
+   85   1      //    pit_ms_init(TIM1_PIT, 1 ,Wu_motor_Init); 
+   86   1      //      pwm_set_duty(SERVO_PWM, (uint32)SERVO_DUTY(89));
+   87   1          // 此处编写用户代码 例如外设初始化代码等
+   88   1         
+   89   1      
+   90   1        
+   91   1      
+   92   1        
+   93   1      //    ips200_show_string(0, 0, "mt9v03x init.");
+   94   1        
+   95   1        
+   96   1      //  
+   97   1      //     pwm_init(SERVO_PWM, SERVO_FREQ, Median_servo);  // 舵机初始化
+   98   1      //    pwm_set_duty(SERVO_PWM, (uint32)SERVO_DUTY(88));//test
+   99   1      // while(1)
+  100   1      //    {
+  101   1      //        system_delay_ms(100);   
+  102   1      //        if(mt9v03x_init())
+  103   1      ////         printf("111");
+  104   1      //        else
+  105   1      //            break;
+  106   1      //    gpio_toggle_level(LED1);                                 // 短延时快速闪灯表示异常
+  107   1      //    }
+  108   1      ////    printf("222");
+  109   1      //   
+  110   1              
+  111   1      //中断（编码器、PID、电机输出）主循环（图像处理、屏幕刷）
+  112   1          while (1)
+  113   1          {
+  114   2            if(mt9v03x_finish_flag)
+  115   2            { 
+  116   3      //        test =1;
+  117   3      //        printf("333");
+  118   3          ips200_displayimage03x(mt9v03x_image[0], MT9V03X_W, MT9V03X_H);   //屏幕图像显示,修改二值化显示        
+             -调图像
+C251 COMPILER V5.60.0,  main                                                               10/11/26  17:19:30  PAGE 3   
+
+  119   3            Image_Pro();
+  120   3      //      Screen_Show_Edge_Line();  
+  121   3            mt9v03x_finish_flag=0;  
+  122   3      //          test =0;
+  123   3      //        if(Island_State==3){data_len=1;}
+  124   3            }
+  125   2            
+  126   2      //      
+  127   2                  Key_down();
+  128   2            Screen_ips200() ;     // 刷新屏幕
+  129   2      
+  130   2      //      printf("a: %f\n",a);
+  131   2      //      printf("Left_Island_Flag: %d,Right_Island_Flag: %d,Island_State: %d\n",Left_Island_Flag,Right_Island
+             -_Flag,Island_State);
+  132   2      //      printf("right_edge_line[79]: %d,right_edge_line[77]: %d\n",right_edge_line[79],right_edge_line[79]);
+  133   2      //      printf("%d\n",Img_error);
+  134   2            
+  135   2            
+  136   2            data_len = wireless_uart_read_buffer(data_buffer, 32);
+  137   2            if(data_len != 0 && data_buffer[0] == 's')
+  138   2            {
+  139   3      //        wireless_uart_send_buffer((const uint8 *)"s", 1); 
+  140   3        //    RUNCAR = none_run_car;
+  141   3            Car_Mode =Lock;
+  142   3            // 立刻刹车：清零 PID 和 PWM 输出，不等增量式衰减
+  143   3            PWM_L_set = 0;
+  144   3            PWM_R_set = 0;
+  145   3            Pid_vl.Output       = 0;
+  146   3            Pid_vr.Output       = 0;
+  147   3            Pid_vl.Last_Err     = 0;
+  148   3            Pid_vr.Last_Err     = 0;
+  149   3            Pid_vl.Previous_Err = 0;
+  150   3            Pid_vr.Previous_Err = 0;  
+  151   3            }
+  152   2      
+  153   2      //      if(count_flag==2&&bullseye_flag==1 )// 完成任务（环岛2次+靶心
+  154   2      //      {
+  155   2      ////    RUNCAR = none_run_car;
+  156   2      //      Car_Mode =Lock;                   // → 停车
+  157   2      //       }
+  158   2          }
+  159   1      }
+  160          void pit_handler(void) 
+  161          {
+  162   1           
+  163   1      // 1定义所有局部变量
+  164   1          char buf[32];
+  165   1          char buff[32];
+  166   1          
+  167   1          float real_angle_deg;
+  168   1          float angle_rad;
+  169   1          float abs_angle;
+  170   1        
+  171   1      //  test =0;
+  172   1      //     if(count < 250)
+  173   1      //{
+  174   1      //    count++;
+  175   1      //    start_flag = 1;   // 前3000：开启
+  176   1      //    
+  177   1      //}
+  178   1      //else
+  179   1      //{
+  180   1      ////    count = 0;        // 满3000：清零！
+  181   1      //    start_flag = 0;   // 关闭
+  182   1      //}
+  183   1      
+C251 COMPILER V5.60.0,  main                                                               10/11/26  17:19:30  PAGE 4   
+
+  184   1          if(bullseye_flag==1)
+  185   1               {
+  186   2                   JGD();
+  187   2               }
+  188   1        
+  189   1      
+  190   1      // 2. 获取传感器数据
+  191   1          encoder_get();
+  192   1          gyro_get();
+  193   1          get_car_angle();
+  194   1      
+  195   1      //    // 3. 方向环（舵机）
+  196   1      //    if(Img_error > 10 || Img_error < -10) {kd2 = 0;}
+  197   1      //    else{kd2  = 0.022;}
+  198   1          car_dir = Postion_P2ID_Cal(&Pid_turn, Img_error-11, groyz, kp2, kd2);
+  199   1               
+  200   1               // ★ 新增：直道死区，小误差不动舵机
+  201   1      if (abs(Img_error - 11) < 3)
+  202   1      {
+  203   2          car_dir = 0;
+  204   2      }
+  205   1               
+  206   1          hServo_duty = Median_servo + car_dir;
+  207   1          Servo_duty = Clip(hServo_duty, Min_servo, Max_servo);
+  208   1          pwm_set_duty(SERVO_PWM, (uint32)SERVO_DUTY(Servo_duty));
+  209   1      
+  210   1          // 4. 计算实际角度
+  211   1      real_angle_deg = ((float)Servo_duty - (float)Median_servo) * (90.0f / (float)(Max_servo - Min_servo));
+  212   1      angle_rad = real_angle_deg * 3.1415926f / 180.0f;
+  213   1      
+  214   1      //    // 5. 速度环差速
+  215   1      //if ( set_flage == 1 ) {
+  216   1      //    speed = 20;
+  217   1      //    vl_ex = Pid_vl.Target + speed;
+  218   1      //    vr_ex = Pid_vl.Target + speed;
+  219   1      //  
+  220   1      //} else {
+  221   1      //    // 死区：绝对值小于 3 度时，视为直行，不加差速
+  222   1      //    if (fabs(real_angle_deg) < 3.0f) {
+  223   1      //        vl_ex = vr_ex = Pid_vl.Target;
+  224   1      //    } else if (real_angle_deg > 0) { // 左转
+  225   1      //        vl_ex = Pid_vl.Target * (1.0f - ((BORDWIDTH * tan(angle_rad)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kp);//减速
+  226   1      //        vr_ex = Pid_vl.Target * (1.0f + ((BORDWIDTH * tan(angle_rad)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kd);//加速
+  227   1      //    } else if (real_angle_deg <0) { // 右转
+  228   1      //        abs_angle = -angle_rad;
+  229   1      //        vl_ex = Pid_vl.Target * (1.0f + ((BORDWIDTH * tan(abs_angle)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kd);//加速
+  230   1      //        vr_ex = Pid_vl.Target * (1.0f - ((BORDWIDTH * tan(abs_angle)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kp);//减速
+  231   1      //    }else  {vl_ex = vr_ex = Pid_vl.Target;}
+  232   1      //  }
+  233   1      //    if (Car_Mode == Lock) vl_ex = vr_ex = 0;
+  234   1      //    PWM_L_set = IncrementalPID_Calculate(&Pid_vl, vl_ex);
+  235   1      //    PWM_R_set = IncrementalPID_Calculate(&Pid_vr, vr_ex);
+  236   1      
+  237   1      //    // 5. 速度环差速
+  238   1      //if (Car_Mode == Lock) {vl_ex = vr_ex = 0;
+  239   1      // PWM_L_set = IncrementalPID_Calculate(&Pid_vl, vl_ex);
+  240   1      //    PWM_R_set = IncrementalPID_Calculate(&Pid_vr, vr_ex);}
+  241   1      
+  242   1          // 5. 速度环差速
+  243   1      //     if (Car_Mode == Lock){ vl_ex = vr_ex = 0;}
+  244   1      //if ( start_flag == 1 ) {
+  245   1      //    speed = 0;
+C251 COMPILER V5.60.0,  main                                                               10/11/26  17:19:30  PAGE 5   
+
+  246   1      //    vl_ex = Pid_vl.Target - speed;
+  247   1      //    vr_ex = Pid_vl.Target - speed;
+  248   1      //  
+  249   1      //} else if (fabs(real_angle_deg) < 3.0f)// 死区：绝对值小于 3 度时，视为直行，不加差速
+  250   1      //{
+  251   1      //        vl_ex = vr_ex = Pid_vl.Target;
+  252   1      //    } else if (real_angle_deg > 0) { // 左转
+  253   1      //        vl_ex = Pid_vl.Target * (1.0f - ((BORDWIDTH * tan(angle_rad)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kp);//减速
+  254   1      //        vr_ex = Pid_vl.Target * (1.0f + ((BORDWIDTH * tan(angle_rad)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kd);//加速
+  255   1      //    } else if (real_angle_deg <0) { // 右转
+  256   1      //        abs_angle = -angle_rad;
+  257   1      //        vl_ex = Pid_vl.Target * (1.0f + ((BORDWIDTH * tan(abs_angle)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kd);//加速
+  258   1      //        vr_ex = Pid_vl.Target * (1.0f - ((BORDWIDTH * tan(abs_angle)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kp);//减速
+  259   1      //    }else  {vl_ex = vr_ex = Pid_vl.Target;}
+  260   1      ////  }
+  261   1      
+  262   1      //    PWM_L_set = IncrementalPID_Calculate(&Pid_vl, vl_ex);
+  263   1      //    PWM_R_set = IncrementalPID_Calculate(&Pid_vr, vr_ex);
+  264   1      
+  265   1      //    // 5. 速度环差速
+  266   1      //if (Car_Mode == Lock) {vl_ex = vr_ex = 0;
+  267   1      // PWM_L_set = IncrementalPID_Calculate(&Pid_vl, vl_ex);
+  268   1      //    PWM_R_set = IncrementalPID_Calculate(&Pid_vr, vr_ex);}
+  269   1      ////    // 5. 速度环差速
+  270   1      //else if ( start_flag ==1 ) {
+  271   1      // PWM_L_set =50 ;//要具体打印一下
+  272   1      // PWM_R_set=50 ;
+  273   1      
+  274   1      ////  
+  275   1      //} else if( fabs(real_angle_deg) < 3.0f)  // 死区：绝对值小于 3 度时，视为直行，不加差速
+  276   1      //{
+  277   1      //        vl_ex = vr_ex = Pid_vl.Target;
+  278   1      //          PWM_L_set = IncrementalPID_Calculate(&Pid_vl, vl_ex);
+  279   1      //    PWM_R_set = IncrementalPID_Calculate(&Pid_vr, vr_ex);
+  280   1      //    } else if (real_angle_deg > 0) { // 左转
+  281   1      //        vl_ex = Pid_vl.Target * (1.0f - ((BORDWIDTH * tan(angle_rad)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kp);//减速
+  282   1      //        vr_ex = Pid_vl.Target * (1.0f + ((BORDWIDTH * tan(angle_rad)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kd);//加速
+  283   1      //          PWM_L_set = IncrementalPID_Calculate(&Pid_vl, vl_ex);
+  284   1      //    PWM_R_set = IncrementalPID_Calculate(&Pid_vr, vr_ex);
+  285   1      //    } else if (real_angle_deg <0) { // 右转
+  286   1      //        abs_angle = -angle_rad;
+  287   1      //        vl_ex = Pid_vl.Target * (1.0f + ((BORDWIDTH * tan(abs_angle)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kd);//加速
+  288   1      //        vr_ex = Pid_vl.Target * (1.0f - ((BORDWIDTH * tan(abs_angle)) / (2.0f * LDISTANCE)) * Pid_wheel
+             -_turn.Kp);//减速
+  289   1      //          PWM_L_set = IncrementalPID_Calculate(&Pid_vl, vl_ex);
+  290   1      //    PWM_R_set = IncrementalPID_Calculate(&Pid_vr, vr_ex);
+  291   1      //    }else  {vl_ex = vr_ex = Pid_vl.Target;
+  292   1      //          PWM_L_set = IncrementalPID_Calculate(&Pid_vl, vl_ex);
+  293   1      //    PWM_R_set = IncrementalPID_Calculate(&Pid_vr, vr_ex);
+  294   1      //    }
+  295   1        
+  296   1          
+  297   1          // 5. 速度环差速
+  298   1      //    if (RUNCAR == run_car) {  
+  299   1      
+  300   1      
+  301   1      if (flage == 1) {
+  302   2          speed = 20;
+  303   2          vl_ex = Pid_vl.Target + speed;
+C251 COMPILER V5.60.0,  main                                                               10/11/26  17:19:30  PAGE 6   
+
+  304   2          vr_ex = Pid_vl.Target + speed;
+  305   2      } else {
+  306   2          // 死区：绝对值小于 3 度时，视为直行，不加差速
+  307   2          if (fabs(real_angle_deg) < 3.0f) {
+  308   3              vl_ex = vr_ex = Pid_vl.Target;
+  309   3          } else if (real_angle_deg > 0) { // 左转
+  310   3              vl_ex = Pid_vl.Target * (1.0f - ((BORDWIDTH * tan(angle_rad)) / (2.0f * LDISTANCE)) * Pid_wheel_t
+             -urn.Kp);//减速
+  311   3              vr_ex = Pid_vl.Target * (1.0f + ((BORDWIDTH * tan(angle_rad)) / (2.0f * LDISTANCE)) * Pid_wheel_t
+             -urn.Kd);//加速
+  312   3          } else if (real_angle_deg <0) { // 右转
+  313   3              abs_angle = -angle_rad;
+  314   3              vl_ex = Pid_vl.Target * (1.0f + ((BORDWIDTH * tan(abs_angle)) / (2.0f * LDISTANCE)) * Pid_wheel_t
+             -urn.Kd);//加速
+  315   3              vr_ex = Pid_vl.Target * (1.0f - ((BORDWIDTH * tan(abs_angle)) / (2.0f * LDISTANCE)) * Pid_wheel_t
+             -urn.Kp);//减速
+  316   3          }else  {vl_ex = vr_ex = Pid_vl.Target;}
+  317   2        }
+  318   1      
+  319   1        
+  320   1        
+  321   1      //    if (Car_Mode == none_run_car) vl_ex = vr_ex = 0;
+  322   1        if (Car_Mode == Lock) vl_ex = vr_ex = 0;
+  323   1        
+  324   1        
+  325   1        
+  326   1          PWM_L_set = IncrementalPID_Calculate(&Pid_vl, vl_ex);
+  327   1          PWM_R_set = IncrementalPID_Calculate(&Pid_vr, vr_ex);
+  328   1        
+  329   1        
+  330   1      //}else{
+  331   1      // PWM_L_set =0;
+  332   1      //   PWM_R_set=0;
+  333   1      //}
+  334   1        
+  335   1        
+  336   1        
+  337   1        
+  338   1      //    printf("%d\r\n",bullseye_center_x);
+  339   1          // 打印调试信息
+  340   1      //sprintf(buf, " duty=%d\r\n", Img_error);
+  341   1      //wireless_uart_send_buffer((const uint8*)buf, strlen(buf));
+  342   1      //sprintf(buf, " x=%f\r\n",FJ_Angle);
+  343   1      //wireless_uart_send_buffer((const uint8*)buf, strlen(buf));
+  344   1      //    sprintf(buf, " y= %d\r\n",bullseye_center_y  );
+  345   1      //    wireless_uart_send_buffer((const uint8*)buf, strlen(buf));
+  346   1      //    sprintf(buf, "  b=%d\r\n",  bullseye_center_x );
+  347   1      //    wireless_uart_send_buffer((const uint8*)buf, strlen(buf));
+  348   1      //  sprintf(buf, " Continuity_Change_Right(70,5)= %d\r\n", Continuity_Change_Right(70,5) );
+  349   1      //  wireless_uart_send_buffer((const uint8*)buf, strlen(buf));
+  350   1      //    sprintf(buf, "  w=%d\r\n", bullseye_center_x);
+  351   1      //    wireless_uart_send_buffer((const uint8*)buf, strlen(buf));
+  352   1        //    sprintf(buf, "  w=%d\r\n",bullseye_center_y );
+  353   1      //    wireless_uart_send_buffer((const uint8*)buf, strlen(buf));
+  354   1      //    if(Island_State==5){
+  355   1      //     sprintf(buf, " zs= %d\r\n", Boundry_Start_Right );
+  356   1      //    wireless_uart_send_buffer((const uint8*)buf, strlen(buf));}
+  357   1      //    sprintf(buf, "  Island_State=%d\r\n",  Island_State);
+  358   1      //    wireless_uart_send_buffer((const uint8*)buf, strlen(buf));
+  359   1      
+  360   1      //  printf("%d,%d\n", Speed_L, vl_ex);
+  361   1      //  printf("lzs:%d\r\n",Speed_L);
+  362   1      //  printf("lmub:%d\r\n",vl_ex);
+  363   1      
+  364   1      
+  365   1      
+C251 COMPILER V5.60.0,  main                                                               10/11/26  17:19:30  PAGE 7   
+
+  366   1      
+  367   1      
+  368   1          car_control();
+  369   1        
+  370   1      //     test =1;
+  371   1      }
+*** WARNING C47 IN LINE 164 OF ..\user\main.c: 'buf': unreferenced local variable
+*** WARNING C47 IN LINE 165 OF ..\user\main.c: 'buff': unreferenced local variable
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =    ------     ------
+  ecode size           =      1435     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =        39          4
+  xdata-const size     =    ------     ------
+  edata size           =    ------     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =        28     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  2 WARNING(S),  0 ERROR(S)
